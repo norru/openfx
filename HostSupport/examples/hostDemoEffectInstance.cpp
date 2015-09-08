@@ -236,19 +236,4 @@ namespace MyHost {
     t2 = 25;
   }
 
-#ifdef OFX_EXTENSIONS_NUKE
-  /// Returns the number of views
-  OfxStatus MyEffectInstance::getViewCount(int *nViews) const {
-    *nViews = 1;
-    return kOfxStatOK;
-  }
-          
-  /// Returns the view textual representation
-  /// The string is owned by the host and must be valid throughout the calling action
-  OfxStatus MyEffectInstance::getViewName(int viewIndex, const char** name) const {
-    *name = "main";
-    return kOfxStatOK;
-  }
-#endif
-
 }

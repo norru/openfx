@@ -248,40 +248,6 @@ namespace OFX {
         /// does changing the named param re-tigger a clip preferences action
         bool isClipPreferencesSlaveParam(const std::string &s) const;
 
-#ifdef OFX_EXTENSIONS_NUKE
-        /// does this effect handle transform effects
-        bool canTransform() const;
-      
-        /// Indicates that a host or plugin can fetch more than a type of image from a clip
-        bool isMultiPlanar() const;
-        
-        ///Indicates that the plug-in would like to have a mask automatically handled by the host if possible
-        bool isHostMaskingEnabled() const;
-          
-        ///Indicates that the plug-in would like to have a "Mix" parameter handled by the host if possible
-        bool isHostMixingEnabled() const;
-        
-        enum OfxPassThroughLevelEnum {
-            ePassThroughLevelEnumBlockAllNonRenderedPlanes = 0,
-            ePassThroughLevelEnumPassThroughAllNonRenderedPlanes,
-            ePassThroughLevelEnumRenderAllRequestedPlanes,
-        };
-          
-        /// If true, the plug-in is asking to pass-through all non rendered planes in output, otherwise they should be blocked and non
-        /// accessible from below
-        OfxPassThroughLevelEnum getPassThroughForNonRenderedPlanes() const;
-          
-        /// Indicates to the host that the plugin is view aware, in which case it will have to use the view calls
-        bool isViewAware() const;
-          
-        /// Indicates to the host that a view aware plugin produces the same image independent of the view being rendered
-        int getViewInvariance() const;
-#endif
-
-#ifdef OFX_EXTENSIONS_NATRON
-        /// is this effect deprecated
-        bool isDeprecated() const;
-#endif
       };
 
       /// an image effect plugin descriptor
@@ -345,13 +311,6 @@ namespace OFX {
       /// a map used to specify needed frame ranges on set of clips
       typedef std::map<ClipInstance *, std::vector<OfxRangeD> > RangeMap;
 
-#ifdef OFX_EXTENSIONS_NUKE
-      /// a map used to indicate needed frame/views ranges for all input clips
-      typedef std::map<ClipInstance*, std::map<int, std::vector<OfxRangeD> > > ViewsRangeMap;
-        
-      /// a map used to specify clip components on clips
-      typedef std::map<ClipInstance*,std::list<std::string> > ComponentsMap;
-#endif
       /// an image effect plugin instance.
       ///
       /// Client code needs to filling the pure virtuals in this.
@@ -626,10 +585,6 @@ namespace OFX {
                                             OfxPointD   renderScale,
                                             bool     sequentialRender,
                                             bool     interactiveRender
-#                                         ifdef OFX_EXTENSIONS_NUKE
-                                            ,
-                                            int view
-#                                         endif
                                             );
 
         virtual OfxStatus renderAction(OfxTime      time,
@@ -639,18 +594,6 @@ namespace OFX {
                                        bool     sequentialRender,
                                        bool     interactiveRender,
                                        bool     draftRender
-#                                    if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
-                                       ,
-                                       int view
-#                                    endif
-#                                    ifdef OFX_EXTENSIONS_VEGAS
-                                       ,
-                                       int nViews
-#                                    endif
-#                                    ifdef OFX_EXTENSIONS_NUKE
-                                       ,
-                                       const std::list<std::string>& planes
-#                                    endif
                                        );
 
         virtual OfxStatus endRenderAction(OfxTime  startFrame,
@@ -660,20 +603,7 @@ namespace OFX {
                                           OfxPointD   renderScale,
                                           bool     sequentialRender,
                                           bool     interactiveRender
-#                                       ifdef OFX_EXTENSIONS_NUKE
-                                          ,
-                                          int view
-#                                       endif
                                           );
-
-#ifdef OFX_EXTENSIONS_NUKE
-        virtual OfxStatus getTransformAction(OfxTime time,
-                                             const std::string& field,
-                                             OfxPointD renderScale,
-                                             int view,
-                                             std::string& clip,
-                                             double transform[9]);
-#endif
 
         /// Call the region of definition action the plugin at the given time
         /// and with the given render scales. The value is returned in rod.
@@ -681,9 +611,6 @@ namespace OFX {
         /// RoD is calculated and returned. 
         virtual OfxStatus getRegionOfDefinitionAction(OfxTime  time,
                                                       OfxPointD   renderScale,
-#ifdef OFX_EXTENSIONS_NUKE
-                                                      int view,
-#endif
                                                       OfxRectD &rod);
         
         /// call the get region of interest action on the plugin for the 
@@ -694,31 +621,9 @@ namespace OFX {
         /// as well
         virtual OfxStatus getRegionOfInterestAction(OfxTime  time,
                                                     OfxPointD   renderScale,
-#ifdef OFX_EXTENSIONS_NUKE
-                                                    int view,
-#endif
                                                     const OfxRectD &roi,
                                                     std::map<ClipInstance *, OfxRectD> &rois);
           
-#ifdef OFX_EXTENSIONS_NUKE
-          /// Call the clipComponents action on the plug-in for the given frame and view.
-          /// Enquires which components are needed on input and produced on output
-          /// For each clip a list of all components. For input clips the components needed, for output clips the components produced)
-          /// The passThroughClip will be set to an input clip to use as pass-through for all non rendered planes
-          /// The passThroughTime is the time at which to pass-through, must have been registered by getFramesNeeded
-          /// The passThroughView is the time at which to pass-through, must have been registered by getFrameViewsNeeded
-        virtual OfxStatus getClipComponentsAction(OfxTime time,
-                                                  int view,
-                                                  ComponentsMap& clipComponents,
-                                                  ClipInstance*& passThroughClip,
-                                                  OfxTime& passThroughTime,
-                                                  int& passThroughView);
-          /// get frames/views needed for the given frame/view
-        virtual OfxStatus getFrameViewsNeeded(OfxTime time,
-                                              int view,
-                                              ViewsRangeMap& rangeMap);
-#endif
-
         // get frames needed to render the given frame
         virtual OfxStatus getFrameNeededAction(OfxTime time, 
                                                RangeMap &rangeMap);
@@ -728,9 +633,6 @@ namespace OFX {
                                            const std::string &  field,
                                            const OfxRectI  &renderRoI,
                                            OfxPointD   renderScale,
-#ifdef OFX_EXTENSIONS_NUKE
-                                           int view,
-#endif
                                            std::string &clip);
 
         // time domain
@@ -797,14 +699,6 @@ namespace OFX {
         /// more chromatic components
         virtual const std::string &findMostChromaticComponents(const std::string &a, const std::string &b) const;
           
-#ifdef OFX_EXTENSIONS_NUKE
-        /// Returns the number of views
-        virtual OfxStatus getViewCount(int *nViews) const = 0;
-          
-        /// Returns the view textual representation
-        /// The string is owned by the host and must be valid throughout the calling action
-        virtual OfxStatus getViewName(int viewIndex, const char** name) const = 0;
-#endif
       };
 
       ////////////////////////////////////////////////////////////////////////////////

@@ -98,11 +98,6 @@ namespace OFX {
         /// is the clip a nominal 'mask' clip
         bool supportsTiles() const;
 
-#ifdef OFX_EXTENSIONS_NUKE
-        /// can a kFnOfxPropMatrix2D be attached to images on this clip
-        bool canTransform() const;
-#endif
-
         /// get property set, const version
         const Property::Set &getProps() const;
 
@@ -212,15 +207,6 @@ namespace OFX {
         /// called by clip preferences action 
         virtual void setComponents(const std::string &s);
                              
-#ifdef OFX_EXTENSIONS_NUKE
-        /// Returns the components present on the effect. Much like getComponents() it can also
-        /// return components from other planes.
-        /// Returns a vector since the function getStringPropertyN does not exist. Only getStringProperty
-        /// with an index exists.
-        virtual const std::vector<std::string>& getComponentsPresent() const;
-                            
-#endif
-
         /// Get the Raw Unmapped Pixel Depth from the host for chromatic planes
         ///
         /// \returns
@@ -297,27 +283,6 @@ namespace OFX {
         /// If bounds is not null, fetch the indicated section of the canonical image plane.
         virtual ImageEffect::Image* getImage(OfxTime time, const OfxRectD *optionalBounds) = 0;
                              
-#     ifdef OFX_EXTENSIONS_NUKE
-                             
-        /// override this to fill in the given image plane at the given time.
-        /// The bounds of the image on the image plane should be
-        /// 'appropriate', typically the value returned in getRegionsOfInterest
-        /// on the effect instance.
-        /// Outside a render call, the optionalBounds should
-        /// be 'appropriate' for the image.
-        /// If bounds is not null, fetch the indicated section of the canonical image plane.
-        ///
-        /// This function implements both V1 of the image plane suite and V2. In the V1 the parameter view was not present and
-        /// will be passed -1, indicating that you should on your own retrieve the correct index of the view at which the render called was issues
-        /// by using thread local storage. In V2 the view index will be correctly set with a value >= 0.
-        ///
-        virtual ImageEffect::Image* getImagePlane(OfxTime time, int view, const std::string& plane,const OfxRectD *optionalBounds) = 0;
-                    
-        /// override this to return the rod on the clip for the given view
-        virtual OfxRectD getRegionOfDefinition(OfxTime time, int view) const = 0;
-                             
-#     endif
-
 #     ifdef OFX_SUPPORTS_OPENGLRENDER
         /// override this to fill in the OpenGL texture at the given time.
         /// The bounds of the image on the image plane should be 
@@ -326,25 +291,6 @@ namespace OFX {
         /// be 'appropriate' for the.
         /// If bounds is not null, fetch the indicated section of the canonical image plane.
         virtual ImageEffect::Texture* loadTexture(OfxTime time, const char *format, const OfxRectD *optionalBounds) = 0;
-#     endif
-#     ifdef OFX_EXTENSIONS_VEGAS
-        /// override this to fill in the image at the given time from a specific view
-        /// (using the standard callback gets you the current view being rendered, @see getImage).
-        /// The bounds of the image on the image plane should be 
-        /// 'appropriate', typically the value returned in getRegionsOfInterest
-        /// on the effect instance. Outside a render call, the optionalBounds should
-        /// be 'appropriate' for the.
-        /// If bounds is not null, fetch the indicated section of the canonical image plane.
-        virtual ImageEffect::Image* getStereoscopicImage(OfxTime time, int view, const OfxRectD *optionalBounds) = 0;
-#endif
-
-#if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
-        /// override this to set the view to be returned by getImage()
-        /// This is called by Instance::renderAction() for each clip, before calling
-        /// kOfxImageEffectActionRender on the Instance.
-        /// The view number has to be stored in the Clip, so this is typically not thread-safe,
-        /// except if thread-local storage is used.
-        virtual void setView(int view) = 0;
 #     endif
 
         /// override this to return the rod on the clip

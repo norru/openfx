@@ -53,9 +53,6 @@ namespace MyHost {
     MyEffectInstance *_effect;
     std::string       _name;
     MyImage          *_outputImage; ///< only set for output clips
-#if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
-    int               _view; ///< view used by the last renderAction
-#endif
 
   public:
     MyClipInstance(MyEffectInstance* effect, OFX::Host::ImageEffect::ClipDescriptor* desc);
@@ -147,41 +144,6 @@ namespace MyHost {
     /// be 'appropriate' for the.
     /// If bounds is not null, fetch the indicated section of the canonical image plane.
     virtual OFX::Host::ImageEffect::Texture* loadTexture(OfxTime time, const char *format, const OfxRectD *optionalBounds) { return NULL; };
-#endif
-
-#ifdef OFX_EXTENSIONS_NUKE
-    /// override this to fill in the given image plane at the given time.
-    /// The bounds of the image on the image plane should be
-    /// 'appropriate', typically the value returned in getRegionsOfInterest
-    /// on the effect instance.
-    /// Outside a render call, the optionalBounds should
-    /// be 'appropriate' for the image.
-    /// If bounds is not null, fetch the indicated section of the canonical image plane.
-    ///
-    /// This function implements both V1 of the image plane suite and V2. In the V1 the parameter view was not present and
-    /// will be passed -1, indicating that you should on your own retrieve the correct index of the view at which the render called was issues
-    /// by using thread local storage. In V2 the view index will be correctly set with a value >= 0.
-    ///
-    virtual OFX::Host::ImageEffect::Image* getImagePlane(OfxTime time, int view, const std::string& plane,const OfxRectD *optionalBounds);
-
-    /// override this to return the rod on the clip for the given view
-    virtual OfxRectD getRegionOfDefinition(OfxTime time, int view) const;
-#endif
-
-#ifdef OFX_EXTENSIONS_VEGAS
-    /// override this to fill in the image at the given time from a specific view
-    /// (using the standard callback gets you the current view being rendered, @see getImage).
-    /// The bounds of the image on the image plane should be
-    /// 'appropriate', typically the value returned in getRegionsOfInterest
-    /// on the effect instance. Outside a render call, the optionalBounds should
-    /// be 'appropriate' for the.
-    /// If bounds is not null, fetch the indicated section of the canonical image plane.
-    virtual OFX::Host::ImageEffect::Image* getStereoscopicImage(OfxTime time, int view, const OfxRectD *optionalBounds);
-#endif
-
-#if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
-    /// set the default view returned by getImage()
-    virtual void setView(int view);
 #endif
 
     /// override this to return the rod on the clip

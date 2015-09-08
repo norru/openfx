@@ -153,26 +153,14 @@ namespace MyHost {
     
     int fillValue = (int)(floor(255.0 * (time/OFXHOSTDEMOCLIPLENGTH))) & 0xff;
     OfxRGBAColourB color;
-#ifdef OFX_EXTENSIONS_VEGAS
-    color.r = view == 0 ? fillValue : 0;
-    color.g = view == 1 ? fillValue : 0;
-    color.b = view == 1 ? fillValue : 0;
-#else
     color.r = color.g = color.b = fillValue;
-#endif
     color.a = 255;
 
     std::fill(_data, _data + kPalSizeXPixels * kPalSizeYPixels, color);
     // draw the time and the view number in reverse color
     const int scale = 5;
     const int charwidth = 4*scale;
-#ifdef OFX_EXTENSIONS_VEGAS
-    color.r = view == 0 ? 255-fillValue : 0;
-    color.g = view == 1 ? 255-fillValue : 0;
-    color.b = view == 1 ? 255-fillValue : 0;
-#else
     color.r = color.g = color.b = 255-fillValue;
-#endif
     int xx = 50;
     int yy = 50;
     int d;
@@ -236,9 +224,6 @@ namespace MyHost {
     , _effect(effect)
     , _name(desc->getName())
     , _outputImage(NULL)
-#ifdef OFX_EXTENSIONS_VEGAS
-    , _view(0)
-#endif
   {
   }
 
@@ -371,11 +356,7 @@ namespace MyHost {
     if(_name == "Output") {
       if(!_outputImage) {
         // make a new ref counted image
-#ifdef OFX_EXTENSIONS_VEGAS
-        _outputImage = new MyImage(*this, 0, _view);
-#else
         _outputImage = new MyImage(*this, 0);
-#endif
       }
      
       // add another reference to the member image for this fetch
@@ -394,88 +375,9 @@ namespace MyHost {
       // 
       // You should do somewhat more sophisticated image management
       // than this.
-#ifdef OFX_EXTENSIONS_VEGAS
-      MyImage *image = new MyImage(*this, time, _view);
-#else
       MyImage *image = new MyImage(*this, time);
-#endif
       return image;
     }
   }
 
-#ifdef OFX_EXTENSIONS_NUKE
-  /// override this to fill in the given image plane at the given time.
-  /// The bounds of the image on the image plane should be
-  /// 'appropriate', typically the value returned in getRegionsOfInterest
-  /// on the effect instance.
-  /// Outside a render call, the optionalBounds should
-  /// be 'appropriate' for the image.
-  /// If bounds is not null, fetch the indicated section of the canonical image plane.
-  ///
-  /// This function implements both V1 of the image plane suite and V2. In the V1 the parameter view was not present and
-  /// will be passed -1, indicating that you should on your own retrieve the correct index of the view at which the render called was issues
-  /// by using thread local storage. In V2 the view index will be correctly set with a value >= 0.
-  ///
-  OFX::Host::ImageEffect::Image* MyClipInstance::getImagePlane(OfxTime time, int view, const std::string& plane,const OfxRectD *optionalBounds)
-  {
-    return NULL;
-  }
-
-  /// override this to return the rod on the clip for the given view
-  OfxRectD MyClipInstance::getRegionOfDefinition(OfxTime time, int view) const
-  {
-    return getRegionOfDefinition(time);
-  }
-#endif
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /// override this to fill in the image at the given time from a specific view
-  /// (using the standard callback gets you the current view being rendered, @see getImage).
-  /// The bounds of the image on the image plane should be
-  /// 'appropriate', typically the value returned in getRegionsOfInterest
-  /// on the effect instance. Outside a render call, the optionalBounds should
-  /// be 'appropriate' for the.
-  /// If bounds is not null, fetch the indicated section of the canonical image plane.
-  OFX::Host::ImageEffect::Image* MyClipInstance::getStereoscopicImage(OfxTime time, int view, const OfxRectD *optionalBounds)
-  {
-    if(_name == "Output") {
-      if(!_outputImage) {
-        // make a new ref counted image
-        _outputImage = new MyImage(*this, 0, view);
-      }
-     
-      // add another reference to the member image for this fetch
-      // as we have a ref count of 1 due to construction, this will
-      // cause the output image never to delete by the plugin
-      // when it releases the image
-      _outputImage->addReference();
-
-      // return it
-      return _outputImage;
-    }
-    else {
-      // Fetch on demand for the input clip.
-      // It does get deleted after the plugin is done with it as we
-      // have not incremented the auto ref
-      // 
-      // You should do somewhat more sophisticated image management
-      // than this.
-      MyImage *image = new MyImage(*this, time, view);
-      return image;
-    }
-  }
-#endif
-
-#if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
-  /// set the default view returned by getImage()
-  void MyClipInstance::setView(int view) {
-    if (view != _view) {
-      if (_outputImage) {
-        delete _outputImage;
-        _outputImage = NULL;
-      }
-      _view = view;
-    }
-  }
-#endif
 } // MyHost

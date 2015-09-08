@@ -31,9 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ofxKeySyms.h"
 #include "ofxCore.h"
 #include "ofxImageEffect.h"
-#ifdef OFX_EXTENSIONS_NUKE
-#include "nuke/fnPublicOfxExtensions.h"
-#endif
 
 // ofx host
 #include "ofxhBinary.h"
@@ -116,9 +113,6 @@ namespace OFX {
 #endif
         { kOfxInteractPropSlaveToParam , Property::eString, 0, false, ""},
         { kOfxInteractPropSuggestedColour , Property::eDouble, 3, true, "1.0f" },
-#ifdef OFX_EXTENSIONS_NUKE
-        { kOfxPropOverlayColour , Property::eDouble, 3, true, "1.0f" },
-#endif
         Property::propSpecEnd
       };
 
@@ -156,9 +150,6 @@ namespace OFX {
         _properties.setGetHook(kOfxInteractPropViewportSize,this);
 #endif
         _properties.setGetHook(kOfxInteractPropSuggestedColour,this);
-#ifdef OFX_EXTENSIONS_NUKE
-        _properties.setGetHook(kOfxPropOverlayColour,this);
-#endif
 
         _argProperties.setGetHook(kOfxInteractPropPixelScale, this);
         _argProperties.setGetHook(kOfxInteractPropBackgroundColour,this);
@@ -193,9 +184,6 @@ namespace OFX {
           return 3;
         }
         else if(name == kOfxInteractPropSuggestedColour
-#ifdef OFX_EXTENSIONS_NUKE
-                || name == kOfxPropOverlayColour
-#endif
                 ){
           return 3;
         }
@@ -229,9 +217,6 @@ namespace OFX {
           return first[index];
         }
         else if(name == kOfxInteractPropSuggestedColour
-#ifdef OFX_EXTENSIONS_NUKE
-                || name == kOfxPropOverlayColour
-#endif
                 ){
           if(index>=3) throw Property::Exception(kOfxStatErrBadIndex);
           double first[3];
@@ -262,9 +247,6 @@ namespace OFX {
           getBackgroundColour(first[0],first[1],first[2]);
         }
         else if(name == kOfxInteractPropSuggestedColour
-#ifdef OFX_EXTENSIONS_NUKE
-                || name == kOfxPropOverlayColour
-#endif
                 ){
           if(n>3) throw Property::Exception(kOfxStatErrBadIndex);
           bool stat = getSuggestedColour(first[0],first[1],first[2]);

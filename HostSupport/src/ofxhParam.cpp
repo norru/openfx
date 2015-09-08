@@ -33,12 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef OFX_SUPPORTS_PARAMETRIC
 #include "ofxParametricParam.h"
 #endif
-#ifdef OFX_EXTENSIONS_NUKE
-#include "nuke/fnPublicOfxExtensions.h"
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include "ofxNatron.h"
-#endif
 
 // ofx host
 #include "ofxhBinary.h"
@@ -274,13 +268,6 @@ namespace OFX {
           { kOfxPropShortLabel, Property::eString, 1, false, cname },
           { kOfxPropLongLabel,  Property::eString, 1, false, cname },
           { kOfxPropIcon,       Property::eString, 2, false, "" },
-#ifdef OFX_EXTENSIONS_NUKE
-          { kOfxParamPropLayoutHint,  Property::eInt, 1, false, "0" },
-          { kOfxParamPropLayoutPadWidth,  Property::eInt, 1, false, "0" },
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-          { kNatronOfxParamPropIsInstanceSpecific, Property::eInt, 1, false, "0"},
-#endif
           Property::propSpecEnd
         };
         
@@ -303,13 +290,6 @@ namespace OFX {
 
         static const Property::PropSpec allChoice[] = {
           { kOfxParamPropChoiceOption,    Property::eString,    0,    false,    "" },
-#ifdef OFX_EXTENSIONS_TUTTLE
-          { kOfxParamPropChoiceLabelOption, Property::eString,  0,    false,    "" },
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-          { kNatronOfxParamPropChoiceCascading,         Property::eInt, 1,    false,    "0"},
-          { kNatronOfxParamPropChoiceHostCanAddOptions, Property::eInt, 1,    false,    "0"},
-#endif
           Property::propSpecEnd
         };
 
@@ -325,9 +305,6 @@ namespace OFX {
 
         static const Property::PropSpec allGroup[] = {
           { kOfxParamPropGroupOpen, Property::eInt, 1, false, "1" },
-#         ifdef OFX_EXTENSIONS_NUKE
-          { kFnOfxParamPropGroupIsTab, Property::eInt, 1, false, "0" },
-#         endif
           Property::propSpecEnd
         };
 

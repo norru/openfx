@@ -37,15 +37,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ofxhPropertySuite.h"
 #include "ofxhClip.h"
 #include "ofxhImageEffect.h"
-#ifdef OFX_EXTENSIONS_VEGAS
-#include "ofxSonyVegas.h"
-#endif
-#ifdef OFX_EXTENSIONS_NUKE
-#include <nuke/fnOfxExtensions.h>
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include "ofxNatron.h"
-#endif
 #ifdef OFX_SUPPORTS_OPENGLRENDER
 #include "ofxOpenGLRender.h"
 #endif
@@ -70,9 +61,6 @@ namespace OFX {
         { kOfxImageClipPropIsMask,   Property::eInt, 1, false, "0" },
         { kOfxImageClipPropFieldExtraction, Property::eString, 1, false, kOfxImageFieldDoubled },
         { kOfxImageEffectPropSupportsTiles,   Property::eInt, 1, false, "1" },
-#ifdef OFX_EXTENSIONS_NUKE
-        { kFnOfxImageEffectCanTransform,   Property::eInt, 1, false, "0" }, // can a kFnOfxPropMatrix2D be attached to images on this clip
-#endif
         Property::propSpecEnd,
       };
       
@@ -171,14 +159,6 @@ namespace OFX {
         return _properties.getIntProperty(kOfxImageEffectPropSupportsTiles) != 0;
       }
 
-#ifdef OFX_EXTENSIONS_NUKE
-      /// can a kFnOfxPropMatrix2D be attached to images on this clip
-      bool ClipBase::canTransform() const
-      {
-        return _properties.getIntProperty(kFnOfxImageEffectCanTransform) != 0;
-      }
-#endif
-
       const Property::Set& ClipBase::getProps() const
       {
         return _properties;
@@ -225,12 +205,6 @@ namespace OFX {
         { kOfxImageEffectPropUnmappedFrameRange, Property::eDouble, 2, true, "0" },
         { kOfxImageEffectPropUnmappedFrameRate, Property::eDouble, 1, true, "25.0" },
         { kOfxImageClipPropContinuousSamples, Property::eInt, 1, true, "0" },
-#ifdef OFX_EXTENSIONS_VEGAS
-        { kOfxImagePropPixelOrder, Property::eInt, 1, true, kOfxImagePixelOrderRGBA },
-#endif
-#ifdef OFX_EXTENSIONS_NUKE
-        { kFnOfxImageEffectPropComponentsPresent, Property::eString, 0, true, kOfxImageComponentNone},
-#endif
         Property::propSpecEnd,
       };
 
@@ -291,17 +265,6 @@ namespace OFX {
         _components = s;
       }
        
-#ifdef OFX_EXTENSIONS_NUKE
-      const std::vector<std::string>& ClipInstance::getComponentsPresent() const
-      {
-          static std::vector<std::string> components;
-          if (components.empty()) {
-              components.resize(1);
-          }
-          components[0] = _components;
-          return components;
-      }
-#endif
       // get the virutals for viewport size, pixel scale, background colour
       void ClipInstance::getDoublePropertyN(const std::string &name, double *values, int n) const OFX_EXCEPTION_SPEC
       {
@@ -384,16 +347,6 @@ namespace OFX {
       // get the virutals for viewport size, pixel scale, background colour
       const std::string &ClipInstance::getStringProperty(const std::string &name, int n) const OFX_EXCEPTION_SPEC
       {
-#ifdef OFX_EXTENSIONS_NUKE
-        if (name==kFnOfxImageEffectPropComponentsPresent) {
-            const std::vector<std::string>& componentsPresents = getComponentsPresent();
-            if (n >= 0 && n < (int)componentsPresents.size()) {
-                return componentsPresents[n];
-            } else {
-                throw Property::Exception(kOfxStatErrBadIndex);
-            }
-        }
-#endif
         if(n!=0) throw Property::Exception(kOfxStatErrValue);
         if(name==kOfxImageEffectPropPixelDepth){
           return getPixelDepth();
@@ -423,16 +376,6 @@ namespace OFX {
           if (count == 0) {
               return;
           }
-#ifdef OFX_EXTENSIONS_NUKE
-          if (name==kFnOfxImageEffectPropComponentsPresent) {
-              const std::vector<std::string>& componentsPresents = getComponentsPresent();
-              int minCount = (int)componentsPresents.size() < count ? (int)componentsPresents.size() : count;
-              for (int i = 0; i < minCount; ++i) {
-                  values[i] = componentsPresents[i].c_str();
-              }
-              return;
-          }
-#endif
           if(count!=1) throw Property::Exception(kOfxStatErrValue);
           if(name==kOfxImageEffectPropPixelDepth){
               values[0] = getPixelDepth().c_str();
@@ -502,24 +445,9 @@ namespace OFX {
         static const std::string rgba(kOfxImageComponentRGBA);
         static const std::string rgb(kOfxImageComponentRGB);
         static const std::string alpha(kOfxImageComponentAlpha);
-#ifdef OFX_EXTENSIONS_NATRON
-        static const std::string xy(kNatronOfxImageComponentXY);
-#endif
         /// is it there
         if(isSupportedComponent(s))
           return s;
-          
-#ifdef OFX_EXTENSIONS_NATRON
-        if (s == xy) {
-          if (isSupportedComponent(rgb)) {
-            return rgb;
-          } else if (isSupportedComponent(rgba)) {
-            return rgba;
-          } else if (isSupportedComponent(alpha)) {
-            return alpha;
-          }
-        }
-#endif
 
         /// were we fed some custom non chromatic component by getUnmappedComponents? Return it.
         /// we should never be here mind, so a bit weird
@@ -566,9 +494,6 @@ namespace OFX {
         { kOfxImagePropRowBytes, Property::eInt, 1, true, "0", },
         { kOfxImagePropField, Property::eString, 1, true, "", },
         { kOfxImagePropUniqueIdentifier, Property::eString, 1, true, "" },
-#ifdef OFX_EXTENSIONS_NUKE
-        { kFnOfxPropMatrix2D, Property::eDouble, 9, true, "0" }, // If the clip descriptor has kFnOfxImageEffectCanTransform set to 1, this property contains a 3x3 matrix corresponding to a transform in pixel coordinate space, going from the source image to the destination, defaults to the identity matrix. A matrix filled with zeroes is considered as the identity matrix (i.e. no transform)
-#endif
         Property::propSpecEnd
       };
 

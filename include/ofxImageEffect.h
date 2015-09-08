@@ -96,30 +96,6 @@ typedef struct OfxImageMemoryStruct *OfxImageMemoryHandle;
 /** @brief Use to define the retimer effect context  See \ref ::kOfxImageEffectPropContext */
 #define kOfxImageEffectContextRetimer "OfxImageEffectContextRetimer"
 
-#ifdef OFX_EXTENSIONS_TUTTLE
-/** @brief Use to define the reader effect context  See \ref ::kOfxImageEffectPropContext
- An image effect that supports this context must have a string parameter
- with script name (@see kOfxParamPropScriptName) kOfxParamFileName,
- and the image effect descriptor may have the property kTuttleOfxImageEffectPropSupportedExtensions
- ("TuttleOfxImageEffectPropSupportedExtensions"), which is an
- n-dimensional string. */
-#define kOfxImageEffectContextReader "OfxImageEffectContextReader"
-
-/** @brief Use to define the writer effect context  See \ref ::kOfxImageEffectPropContext
- An image effect that supports this context must have a string parameter
- with script name (@see kOfxParamPropScriptName) kOfxParamFileName,
- and the image effect descriptor may have the property kTuttleOfxImageEffectPropSupportedExtensions
- ("TuttleOfxImageEffectPropSupportedExtensions"), which is an
- n-dimensional string. */
-#define kOfxImageEffectContextWriter "OfxImageEffectContextWriter"
-
-/** @brief The parameter name to use in reader and writer contexts for the file name. */
-#define kOfxImageEffectFileParamName "filename"
-
-/** @brief The parameter name to use in reader and writer contexts for the proxy file name. */
-#define kOfxImageEffectProxyParamName "proxy"
-#endif
-
 /** @brief Used as a value for ::kOfxPropType on image effect host handles */
 #define kOfxTypeImageEffectHost "OfxTypeImageEffectHost"
 
