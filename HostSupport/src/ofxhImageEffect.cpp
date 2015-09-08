@@ -893,7 +893,8 @@ namespace OFX {
                                             bool     interactive,
                                             OfxPointD   renderScale,
                                             bool     sequentialRender,
-                                            bool     interactiveRender
+                                            bool     interactiveRender,
+                                            bool     draftRender
                                             )
       {
         Property::PropSpec stuff[] = {
@@ -903,6 +904,7 @@ namespace OFX {
           { kOfxImageEffectPropRenderScale, Property::eDouble, 2, true, "0" },
           { kOfxImageEffectPropSequentialRenderStatus, Property::eInt, 1, true, "0" },
           { kOfxImageEffectPropInteractiveRenderStatus, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" },
           Property::propSpecEnd
         };
 
@@ -920,6 +922,7 @@ namespace OFX {
 
         inArgs.setIntProperty(kOfxImageEffectPropSequentialRenderStatus,sequentialRender);
         inArgs.setIntProperty(kOfxImageEffectPropInteractiveRenderStatus,interactiveRender);
+        inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
 
 #       ifdef OFX_DEBUG_ACTIONS
           std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionBeginSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
@@ -983,7 +986,8 @@ namespace OFX {
                                           bool     interactive,
                                           OfxPointD   renderScale,
                                           bool     sequentialRender,
-                                          bool     interactiveRender
+                                          bool     interactiveRender,
+                                          bool     draftRender
                                           )
       {
         static const Property::PropSpec inStuff[] = {
@@ -993,6 +997,7 @@ namespace OFX {
           { kOfxImageEffectPropRenderScale, Property::eDouble, 2, true, "0" },
           { kOfxImageEffectPropSequentialRenderStatus, Property::eInt, 1, true, "0" },
           { kOfxImageEffectPropInteractiveRenderStatus, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" },
           Property::propSpecEnd
         };
 
@@ -1006,6 +1011,7 @@ namespace OFX {
         inArgs.setDoublePropertyN(kOfxImageEffectPropRenderScale, &renderScale.x, 2);
         inArgs.setIntProperty(kOfxImageEffectPropSequentialRenderStatus,sequentialRender);
         inArgs.setIntProperty(kOfxImageEffectPropInteractiveRenderStatus,interactiveRender);
+        inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
 #       ifdef OFX_DEBUG_ACTIONS
           std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionEndSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
           <<")"<<std::endl;

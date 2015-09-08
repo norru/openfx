@@ -584,7 +584,8 @@ namespace OFX {
                                             bool     interactive,
                                             OfxPointD   renderScale,
                                             bool     sequentialRender,
-                                            bool     interactiveRender
+                                            bool     interactiveRender,
+                                            bool     draftRender
                                             );
 
         virtual OfxStatus renderAction(OfxTime      time,
@@ -602,7 +603,8 @@ namespace OFX {
                                           bool     interactive,
                                           OfxPointD   renderScale,
                                           bool     sequentialRender,
-                                          bool     interactiveRender
+                                          bool     interactiveRender,
+                                          bool     draftRender
                                           );
 
         /// Call the region of definition action the plugin at the given time
