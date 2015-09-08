@@ -925,13 +925,13 @@ namespace OFX {
         inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
 
 #       ifdef OFX_DEBUG_ACTIONS
-          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionBeginSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
+          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionBeginSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender<<","<<draftRender
           <<")"<<std::endl;
 #       endif
 
         OfxStatus st = mainEntry(kOfxImageEffectActionBeginSequenceRender, this->getHandle(), &inArgs, 0);
 #       ifdef OFX_DEBUG_ACTIONS
-          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionBeginSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
+          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionBeginSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender<<","<<draftRender
           <<")->"<<StatStr(st)<<std::endl;
 #       endif
         return st;
@@ -968,13 +968,13 @@ namespace OFX {
         inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
 
 #       ifdef OFX_DEBUG_ACTIONS
-          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionRender<<"("<<time<<","<<field<<",("<<renderRoI.x1<<","<<renderRoI.y1<<","<<renderRoI.x2<<","<<renderRoI.y2<<"),("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
+          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionRender<<"("<<time<<","<<field<<",("<<renderRoI.x1<<","<<renderRoI.y1<<","<<renderRoI.x2<<","<<renderRoI.y2<<"),("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender<<","<<draftRender
           <<")"<<std::endl;
 #       endif
 
         OfxStatus st = mainEntry(kOfxImageEffectActionRender,this->getHandle(), &inArgs, 0);
 #       ifdef OFX_DEBUG_ACTIONS
-          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionRender<<"("<<time<<","<<field<<",("<<renderRoI.x1<<","<<renderRoI.y1<<","<<renderRoI.x2<<","<<renderRoI.y2<<"),("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
+          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionRender<<"("<<time<<","<<field<<",("<<renderRoI.x1<<","<<renderRoI.y1<<","<<renderRoI.x2<<","<<renderRoI.y2<<"),("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender<<","<<draftRender
           <<")->"<<StatStr(st)<<std::endl;
 #       endif
         return st;
@@ -1013,13 +1013,13 @@ namespace OFX {
         inArgs.setIntProperty(kOfxImageEffectPropInteractiveRenderStatus,interactiveRender);
         inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
 #       ifdef OFX_DEBUG_ACTIONS
-          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionEndSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
+          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionEndSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender<<","<<draftRender
           <<")"<<std::endl;
 #       endif
 
         OfxStatus st = mainEntry(kOfxImageEffectActionEndSequenceRender,this->getHandle(), &inArgs, 0);
 #       ifdef OFX_DEBUG_ACTIONS
-          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionEndSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender
+          std::cout << "OFX: "<<(void*)this<<"->"<<kOfxImageEffectActionEndSequenceRender<<"(("<<startFrame<<","<<endFrame<<"),"<<step<<","<<interactive<<",("<<renderScale.x<<","<<renderScale.y<<"),"<<sequentialRender<<","<<interactiveRender<<","<<draftRender
           <<")->"<<StatStr(st)<<std::endl;
 #       endif
         return st;
