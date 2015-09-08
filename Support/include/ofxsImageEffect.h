@@ -48,29 +48,10 @@ of the direct OFX objects and any library side only functions.
 #include <memory>
 #include "ofxsParam.h"
 #include "ofxsInteract.h"
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-#include "ofxsHWNDInteract.h"
-#endif
-#endif
 #include "ofxsMessage.h"
 #include "ofxProgress.h"
 #include "ofxTimeLine.h"
-#ifdef OFX_EXTENSIONS_VEGAS
-#include "ofxSonyVegas.h"
-#endif
 #include "ofxParametricParam.h"
-#ifdef OFX_EXTENSIONS_NUKE
-#include "nuke/camera.h"
-#include "nuke/fnOfxExtensions.h"
-#include "nuke/fnPublicOfxExtensions.h"
-#endif
-#ifdef OFX_EXTENSIONS_TUTTLE
-#include "tuttle/ofxReadWrite.h"
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include "ofxNatron.h"
-#endif
 
 /** @brief Nasty macro used to define empty protected copy ctors and assign ops */
 #define mDeclareProtectedAssignAndCC(CLASS) \
@@ -118,13 +99,6 @@ namespace OFX {
     eContextPaint,
     eContextGeneral,
     eContextRetimer,
-#ifdef OFX_EXTENSIONS_TUTTLE
-    eContextReader,
-    eContextWriter,
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    eContextTracker
-#endif
   };
 
   /** @brief Enumerates the pixel depths supported */
@@ -134,11 +108,6 @@ namespace OFX {
     eBitDepthHalf,
     eBitDepthFloat,
     eBitDepthCustom, ///< some non standard bit depth
-#ifdef OFX_EXTENSIONS_VEGAS
-    eBitDepthUByteBGRA,   /// added support for sony vegas bgra ordered pixels
-    eBitDepthUShortBGRA,
-    eBitDepthFloatBGRA,
-#endif
   };
 
   /** @brief Enumerates the component types supported */
@@ -146,46 +115,9 @@ namespace OFX {
     ePixelComponentRGBA,
     ePixelComponentRGB,
     ePixelComponentAlpha,
-#ifdef OFX_EXTENSIONS_NUKE
-    ePixelComponentMotionVectors,
-    ePixelComponentStereoDisparity,
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    ePixelComponentXY,
-#endif
     ePixelComponentCustom ///< some non standard pixel type
   };
     
-#ifdef OFX_EXTENSIONS_NUKE
-  enum PassThroughLevelEnum {
-    //all planes not specified in output by the getClipComponents action will not be visible by effects down-stream
-    ePassThroughLevelBlockAllNonRenderedPlanes = 0,
-      
-    //all planes not specified in output by the getClipComponents action will be pass-through from the input pass-through clip
-    ePassThroughLevelPassThroughNonRenderedPlanes = 1,
-      
-    //all planes requested by the host are rendered, regardless of the getClipComponents action.
-    //In this mode, the render action will be called once
-    //for every plane (instead of a single time with all planes in parameter) and the plug-in is expected to use the regular
-    //image effect suite, i.e: clipGetImage. The pixel components property of the image returned by clipGetImage is expected to
-    //match what is returned by the pixel components property of the clip. This value is useful for instance for Transform effects:
-    //all planes will be transformed with minimalist changes to the plug-in code.
-    ePassThroughLevelRenderAllRequestedPlanes = 2
-  };
-    
-  enum ViewInvarianceLevelEnum {
-      
-    // All views produced are different from each other
-    eViewInvarianceAllViewsVariant = 0,
-      
-    // All views are similar except for pass-through planes
-    eViewInvarianceOnlyPassThroughPlanesVariant,
-      
-    // Result is similar across all views
-    eViewInvarianceAllViewsInvariant,
-  };
-#endif
-
   /** @brief Enumerates the ways a fielded image can be extracted from a clip */
   enum FieldExtractionEnum {eFieldExtractBoth,   /**< @brief extract both fields */
     eFieldExtractSingle, /**< @brief extracts a single field, so you have a half height image */
@@ -207,48 +139,10 @@ namespace OFX {
     eFieldDoubled /**< @brief image that consists of a single field, but each scan line is double, and so is full height  */
   };
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief Enumerates the pixel order in an image */
-  enum PixelOrderEnum {
-    ePixelOrderRGBA,   /**< @brief pixel order is RGBA (ofx typical) */
-    ePixelOrderBGRA    /**< @brief pixel order is BGRA (added for Sony Vegas) */
-  };
-#endif
-
   enum PreMultiplicationEnum { eImageOpaque,          /**< @brief the image is opaque and so has no premultiplication state */
     eImagePreMultiplied,   /**< @brief the image is premultiplied by it's alpha */
     eImageUnPreMultiplied, /**< @brief the image is unpremultiplied */
   };
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief Enumerates the vegas contexts a plugin is being used in */
-  enum VegasRenderQualityEnum {
-    eVegasRenderQualityUnknown,
-    eVegasRenderQualityDraft,
-    eVegasRenderQualityPreview,
-    eVegasRenderQualityGood,
-    eVegasRenderQualityBest
-    };
-
-  /** @brief Enumerates the vegas contexts a plugin is being used in */
-  enum VegasContextEnum {
-    eVegasContextUnknown,
-    eVegasContextMedia,
-    eVegasContextTrack,
-    eVegasContextEvent,
-    eVegasContextEventFadeIn,
-    eVegasContextEventFadeOut,
-    eVegasContextProject,
-    eVegasContextGenerator
-    };
-
-  /** @brief Enumerates the hint for vegas to display thumbnails */
-  enum VegasPresetThumbnailEnum {
-    eVegasPresetThumbnailDefault,
-    eVegasPresetThumbnailSolidImage,
-    eVegasPresetThumbnailImageWithAlpha
-    };
-#endif
 
   enum NativeOriginEnum {
     eNativeOriginBottomLeft,
@@ -258,14 +152,6 @@ namespace OFX {
 
   /** @brief turns a field string into and enum */
   FieldEnum mapStrToFieldEnum(const std::string &str)  throw(std::invalid_argument);
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief map a std::string to a RenderQuality */
-  VegasRenderQualityEnum mapToVegasRenderQualityEnum(const std::string &s) throw(std::invalid_argument);
-
-  /** @brief map a std::string to a context */
-  VegasContextEnum mapToVegasContextEnum(const std::string &s) throw(std::invalid_argument);
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   /** @brief map a std::string to a context enum */
@@ -286,11 +172,6 @@ namespace OFX {
   PixelComponentEnum mapStrToPixelComponentEnum(const std::string &str) throw(std::invalid_argument);
 
   const char* mapPixelComponentEnumToStr(PixelComponentEnum pixelComponent) throw(std::invalid_argument);
-
-#if defined(OFX_EXTENSIONS_NATRON)
-  /** @brief extract layer name (first element) and channel names (other elements) from the kOfxImageEffectPropComponents property value, @see getPixelComponentsProperty() */
-  std::vector<std::string> mapPixelComponentCustomToLayerChannels(const std::string& comp);
-#endif
 
   class PluginFactory
   {
@@ -407,11 +288,6 @@ namespace OFX {
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     bool supportsOpenGLRender;
 #endif
-#ifdef OFX_EXTENSIONS_NUKE
-    bool supportsCameraParameter;
-    bool canTransform;
-    bool isMultiPlanar;
-#endif
     int maxParameters;
     int maxPages;
     int pageRowCount;
@@ -425,12 +301,6 @@ namespace OFX {
     bool supportsProgressSuite;
     bool supportsTimeLineSuite;
     bool supportsMessageSuiteV2;
-#ifdef OFX_EXTENSIONS_NATRON
-    bool isNatron;
-    bool supportsDynamicChoices;
-    bool supportsCascadingChoices;
-    bool supportsChannelSelector;
-#endif
 
   public:
     bool supportsPixelComponent(const PixelComponentEnum component) const;
@@ -501,11 +371,6 @@ namespace OFX {
 
     /** @brief say whether this clip is a 'mask', so the host can know to replace with a roto or similar, defaults to false */
     void setIsMask(bool v);
-
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief say whether this clip may contain images with a transform attached */
-    void setCanTransform(bool v);
-#endif
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -532,17 +397,8 @@ namespace OFX {
     std::map<std::string, std::string> _clipPARPropNames;
     std::map<std::string, std::string> _clipROIPropNames;
     std::map<std::string, std::string> _clipFrameRangePropNames;
-#ifdef OFX_EXTENSIONS_NUKE
-    std::map<std::string, std::string> _clipPlanesPropNames;
-    std::map<std::string, std::string> _clipFrameViewsPropNames;
-#endif
 
     std::auto_ptr<EffectOverlayDescriptor> _overlayDescriptor;
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-    std::auto_ptr<HWNDInteractDescriptor>  _hwndInteractDescriptor;
-#endif // #if defined(WIN32) || defined(WIN64)
-#endif
   public :
     /** @brief ctor */
     ImageEffectDescriptor(OfxImageEffectHandle handle);
@@ -577,14 +433,6 @@ namespace OFX {
 
     /** @brief Add a pixel depth to those supported for OpenGL rendering, defaults to all */
     void addSupportedOpenGLBitDepth(BitDepthEnum v);
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-    /** @brief Add a file extension to those supported, defaults to none */
-    void addSupportedExtension(const std::string& extension);
-    void addSupportedExtensions(const std::vector<std::string>& extensions);
-    void addSupportedExtensions(const char* extensions[]); // NULL-terminated array of char*
-    void setPluginEvaluation(double evaluation);
-#endif
 
     /** @brief Is the plugin single instance only ? defaults to false */
     void setSingleInstance(bool v);
@@ -625,36 +473,6 @@ namespace OFX {
     void addOpenGLBitDepth(BitDepthEnum bitDepth);
 #endif
 
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief Add a guid upgrade path, defaults to none, must be called at least once */
-    void addVegasUpgradePath(const std::string &guidString);
-
-    /** @brief sets the path to a help file, defaults to none, must be called at least once */
-    void setHelpPath(const std::string &helpPathString);
-
-    /** @brief sets the context ID to a help file if it's a .chm file, defaults to none, must be called at least once */
-    void setHelpContextID(int helpContextID);
-
-    void setPresetThumbnailHint(VegasPresetThumbnailEnum thumbnailHint);
-#endif
-
-#ifdef OFX_EXTENSIONS_NUKE
-      /** @brief indicate that a plugin or host can handle transform effects */
-      void setCanTransform(bool v);
-      
-      /** @brief Indicates that a host or plugin can fetch more than a type of image from a clip*/
-      void setIsMultiPlanar(bool v);
-      
-      /** @brief Plugin indicates to the host that it should pass through any planes not modified by the plugin*/
-      void setPassThroughForNotProcessedPlanes(PassThroughLevelEnum v);
-      
-      /** @brief Indicates to the host that the plugin is view aware, in which case it will have to use the view calls*/
-      void setIsViewAware(bool v);
-      
-      /** @brief Indicates to the host that a view aware plugin produces the same image independent of the view being rendered*/
-      void setIsViewInvariant(ViewInvarianceLevelEnum v);
-#endif
-
     /** @brief Create a clip, only callable from describe in context
 
     The returned clip \em must not be deleted by the client code. This is all managed by the ImageEffectDescriptor itself.
@@ -669,27 +487,10 @@ namespace OFX {
     const std::map<std::string, std::string>& getClipPARPropNames() const { return _clipPARPropNames; }
     const std::map<std::string, std::string>& getClipROIPropNames() const { return _clipROIPropNames; }
     const std::map<std::string, std::string>& getClipFrameRangePropNames() const { return _clipFrameRangePropNames; }
-#ifdef OFX_EXTENSIONS_NUKE
-    const std::map<std::string, std::string>& getClipPlanesPropNames() const { return _clipPlanesPropNames; }
-    const std::map<std::string, std::string>& getClipFrameViewsPropNames() const { return _clipFrameViewsPropNames; }
-#endif
-      
+
     /** @brief override this to create an interact for the effect */
     virtual void setOverlayInteractDescriptor(EffectOverlayDescriptor* desc);
 
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-    /** @brief override this to create an hwnd interact for the effect */
-    virtual void setHWNDInteractDescriptor(HWNDInteractDescriptor* desc);
-#endif // #if defined(WIN32) || defined(WIN64)
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-  /** @brief indicate if the host may add a channel selector */
-  void setChannelSelector(PixelComponentEnum v);
-
-  /** @brief indicate that the plugin is deprecated */
-  void setIsDeprecated(bool v);
-#endif
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -714,10 +515,6 @@ namespace OFX {
     FieldEnum _field;                        /**< @brief which field this represents */
     std::string _uniqueID;                   /**< @brief the unique ID of this image */
     OfxPointD _renderScale;                  /**< @brief any scaling factor applied to the image */
-#ifdef OFX_EXTENSIONS_NUKE
-    double _transform[9];                    /**< @brief a 2D transform to apply to the image */
-    bool _transformIsIdentity;
-#endif
 
   public :
     /** @brief ctor */
@@ -766,13 +563,6 @@ namespace OFX {
     /** @brief the unique ID of this image */
     const std::string& getUniqueIdentifier(void) const { return _uniqueID;}
 
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief the 2D transform attached to this image. */
-    void getTransform(double t[9]) const { for (int i = 0; i < 9; ++i) { t[i] = _transform[i]; } }
-
-    /** @brief is the transform identity? */
-    bool getTransformIsIdentity() const { return _transformIsIdentity; }
-#endif
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -858,10 +648,6 @@ namespace OFX {
     /** @brief so one can be made */
     friend class ImageEffect;
 
-#ifdef OFX_EXTENSIONS_VEGAS
-    PixelOrderEnum _pixelOrder;              /**< @brief the pixel order */
-#endif
-
   public :
     /// get the underlying property set on this clip
     const PropertySet &getPropertySet() const {return _clipProps;}
@@ -932,53 +718,6 @@ namespace OFX {
     /** @brief get the RoD for this clip in the cannonical coordinate system */
     OfxRectD getRegionOfDefinition(double t);
 
-#ifdef OFX_EXTENSIONS_NUKE
-    
-    /** @brief get the RoD for this clip in the cannonical coordinate system for the given view */
-    OfxRectD getRegionOfDefinition(double t, int view);
-      
-    /** @brief fetch an image for the given plane and view
-       
-    When finished with, the client code must delete the image.
-    
-    If the same image is fetched twice, it must be deleted in each case, they will not be the same pointer.
-    */
-    Image* fetchImagePlane(double t, int view, const char* plane);
-      
-    /** @brief fetch an image plane, with a specific region in cannonical coordinates
-       
-    When finished with, the client code must delete the image.
-    
-    If the same image is fetched twice, it must be deleted in each case, they will not be the same pointer.
-    */
-    Image* fetchImagePlane(double t, int view, const char* plane, const OfxRectD& bounds);
-      
-    /** @brief fetch an image for the given plane and view
-       
-    When finished with, the client code must delete the image.
-    
-    If the same image is fetched twice, it must be deleted in each case, they will not be the same pointer.
-    */
-    Image* fetchImagePlane(double t, const char* plane);
-      
-    /** @brief fetch an image plane, with a specific region in cannonical coordinates
-       
-    When finished with, the client code must delete the image.
-    
-    If the same image is fetched twice, it must be deleted in each case, they will not be the same pointer.
-    */
-    Image* fetchImagePlane(double t, const char* plane, const OfxRectD& bounds);
-
-    /** @brief Property set indicating the components present on something*/
-    std::list<std::string> getComponentsPresent() const;
-      
-#endif
-      
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief get the pixel order of this image */
-    PixelOrderEnum getPixelOrder(void) const;
-#endif
-
     /** @brief fetch an image
 
     When finished with, the client code must delete the image.
@@ -986,16 +725,6 @@ namespace OFX {
     If the same image is fetched twice, it must be deleted in each case, they will not be the same pointer.
     */
     Image *fetchImage(double t);
-
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief fetch an image
-
-    When finished with, the client code must delete the image.
-
-    If the same image is fetched twice, it must be deleted in each case, they will not be the same pointer.
-    */
-    Image *fetchStereoscopicImage(double t, int view);
-#endif
 
     /** @brief fetch an image, with a specific region in cannonical coordinates
 
@@ -1054,21 +783,9 @@ namespace OFX {
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     bool      openGLEnabled;
 #endif
-#ifdef OFX_EXTENSIONS_VEGAS
-    int         viewsToRender;      /// default is 1, for stereoscopic 3d: 2
-#endif
-#if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
-    int         renderView;         /// default is 0, for s3d left eye: 0, right eye: 1
-#endif
-#ifdef OFX_EXTENSIONS_VEGAS
-    VegasRenderQualityEnum renderQuality;
-#endif
     bool      sequentialRenderStatus;
     bool      interactiveRenderStatus;
     bool      renderQualityDraft;
-#ifdef OFX_EXTENSIONS_NUKE
-    std::list<std::string> planes;
-#endif
   };
 
   /** @brief POD struct to pass rendering arguments into @ref OFX::ImageEffect::isIdentity */
@@ -1077,9 +794,6 @@ namespace OFX {
     OfxPointD renderScale;
     OfxRectI  renderWindow;
     FieldEnum fieldToRender;
-#ifdef OFX_EXTENSIONS_NUKE
-    int view;
-#endif
   };
 
   /** @brief POD struct to pass arguments into  @ref OFX::ImageEffect::beginSequenceRender */
@@ -1094,9 +808,6 @@ namespace OFX {
     bool      sequentialRenderStatus;
     bool      interactiveRenderStatus;
     bool      renderQualityDraft;
-#ifdef OFX_EXTENSIONS_NUKE
-    int view;
-#endif
   };
 
   /** @brief POD struct to pass arguments into  @ref OFX::ImageEffect::endSequenceRender */
@@ -1109,18 +820,12 @@ namespace OFX {
     bool      sequentialRenderStatus;
     bool      interactiveRenderStatus;
     bool      renderQualityDraft;
-#ifdef OFX_EXTENSIONS_NUKE
-    int view;
-#endif
   };
 
   /** @brief POD struct to pass arguments into  @ref OFX::ImageEffect::getRegionOfDefinition */
   struct RegionOfDefinitionArguments {
     double    time;
     OfxPointD renderScale;
-#ifdef OFX_EXTENSIONS_NUKE
-    int view;
-#endif
   };
 
   /** @brief POD struct to pass arguments into @ref OFX::ImageEffect::getRegionsOfInterest */
@@ -1128,43 +833,7 @@ namespace OFX {
     double    time;
     OfxPointD renderScale;
     OfxRectD  regionOfInterest;
-#ifdef OFX_EXTENSIONS_NUKE
-    int view;
-#endif
   };
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief POD struct to pass arguments into @ref OFX::ImageEffect::upliftVegasKeyframes */
-  class SonyVegasUpliftArguments {
-  protected:
-      /** @brief properties for this clip */
-      PropertySet _argProps;
-
-  public:
-
-      SonyVegasUpliftArguments(PropertySet args);
-
-      std::string  guidUplift;
-      int          keyframeCount;
-      void*        commonData;
-      int          commonDataSize;
-
-      void*  getKeyframeData     (int keyframeIndex) const;
-      int    getKeyframeDataSize (int keyframeIndex) const;
-      double getKeyframeTime     (int keyframeIndex) const;
-      VegasInterpolationEnum getKeyframeInterpolation (int keyframeIndex) const;
-  };
-#endif
-
-#ifdef OFX_EXTENSIONS_NUKE
-  /** @brief POD struct to pass arguments into @ref OFX::ImageEffect::getTransform */
-  struct TransformArguments {
-    double    time;
-    OfxPointD renderScale;
-    FieldEnum fieldToRender;
-    int       renderView;
-  };
-#endif
 
   /** @brief Class used to set regions of interest on a clip in @ref OFX::ImageEffect::getRegionsOfInterest
 
@@ -1190,78 +859,6 @@ namespace OFX {
     /** @brief function to set the frames needed on a clip, the range is min <= time <= max */
     virtual void setFramesNeeded(const Clip &clip, const OfxRangeD &range) = 0;
   };
-    
-#ifdef OFX_EXTENSIONS_NUKE
-  struct ClipComponentsArguments {
-    double time;
-    int view;
-  };
-    
-  class ClipComponentsSetter {
-      
-      OFX::PropertySet _outArgs;
-      bool _doneSomething;
-      typedef std::map<std::string, std::string> StringStringMap;
-      const StringStringMap& _clipPlanesPropNames;
-      std::map<std::string,std::vector<std::string> > _clipComponents;
-      
-      const std::string& extractValueForName(const StringStringMap& m, const std::string& name);
-      
-  public:
-      
-      ClipComponentsSetter(OFX::PropertySet props,
-                           const StringStringMap& clipPlanesPropNames)
-      : _outArgs(props)
-      , _doneSomething(false)
-      , _clipPlanesPropNames(clipPlanesPropNames)
-      , _clipComponents()
-      {
-          
-      }
-      
-      bool setOutProperties();
-      
-      void addClipComponents(Clip& clip, PixelComponentEnum comps);
-      
-      //Pass the raw-string, used by the ofxNatron.h extension
-      void addClipComponents(Clip& clip, const std::string& comps);
-      
-      //Pass NULL into clip for non pass-through
-      void setPassThroughClip(const Clip* clip,double time,int view);
-
-  };
-    
-  struct FrameViewsNeededArguments {
-      double time;
-      int view;
-  };
-    
-  class FrameViewsNeededSetter {
-      OFX::PropertySet _outArgs;
-      bool _doneSomething;
-      typedef std::map<std::string, std::string> StringStringMap;
-      const StringStringMap& _clipFrameViewsPropnames;
-      
-      // For each clip and for each view a vector of ranges
-      std::map<std::string, std::map<int, std::vector<OfxRangeD> > > _frameViews;
-      
-      const std::string& extractValueForName(const StringStringMap& m, const std::string& name);
-  public:
-      
-      FrameViewsNeededSetter(OFX::PropertySet props,
-                             const StringStringMap& clipFrameViewsPropNames)
-      : _outArgs(props)
-      , _doneSomething(false)
-      , _clipFrameViewsPropnames(clipFrameViewsPropNames)
-      , _frameViews()
-      {}
-            
-      bool setOutProperties();
-      
-      void addFrameViewsNeeded(const Clip& clip,const OfxRangeD &range, int view);
-      
-  };
-#endif
 
   /** @brief Class used to set the clip preferences of the effect.
   */ 
@@ -1413,11 +1010,6 @@ namespace OFX {
     /** @brief the context this effect was instantiate in */
     ContextEnum getContext(void) const;
 
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief the Vegas context this effect exists in */
-    VegasContextEnum getVegasContext(void);
-#endif
-
     /** @brief size of the project */
     OfxPointD getProjectSize(void) const;
 
@@ -1480,14 +1072,6 @@ namespace OFX {
     The returned clip \em must not be deleted by the client code. This is all managed by the ImageEffect itself.
     */
     Clip *fetchClip(const std::string &name);
-
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief Fetch the named camera param from this instance
-
-    The returned camera param \em must not be deleted by the client code. This is all managed by the ImageEffect itself.
-    */
-    CameraParam* fetchCameraParam(const std::string& name) const;
-#endif
 
     /** @brief does the host want us to abort rendering? */
     bool abort(void) const;
@@ -1580,34 +1164,6 @@ namespace OFX {
 #ifdef OFX_SUPPORTS_DIALOG
     /** @brief called in the host's UI thread after a plugin has requested a dialog @see requestDialog() */
     virtual void dialog(void *userData);
-#endif
-
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief Vegas requires conversion of keyframe data */
-    virtual void upliftVegasKeyframes(const SonyVegasUpliftArguments &upliftInfo);
-
-    /** @brief Vegas invokes about dialog */
-    virtual bool invokeAbout();
-
-    /** @brief Vegas invokes help dialog */
-    virtual bool invokeHelp();
-#endif
-
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief get the needed input components and produced output components*/
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents);
-      
-    /** @brief get the frame/views needed for input clips*/
-    virtual void getFrameViewsNeeded(const FrameViewsNeededArguments& args, FrameViewsNeededSetter& frameViews);
-
-    /** @brief recover a transform matrix from an effect */
-    virtual bool getTransform(const TransformArguments &args, Clip * &transformClip, double transformMatrix[9]);
-      
-    /** @brief Returns the textual representation of a view*/
-    std::string getViewName(int viewIndex) const;
-    
-    /** @brief Returns the number of views*/
-    int getViewCount() const;
 #endif
 
     /** @brief called when a custom param needs to be interpolated */

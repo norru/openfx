@@ -43,12 +43,6 @@ England
 #include <iostream>
 #endif
 #include <stdexcept>
-#ifdef OFX_EXTENSIONS_NUKE
-#include "nuke/fnOfxExtensions.h"
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include "ofxNatron.h"
-#endif
 #ifdef OFX_SUPPORTS_OPENGLRENDER
 #include "ofxOpenGLRender.h"
 #endif
@@ -168,19 +162,6 @@ namespace OFX {
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     OfxImageEffectOpenGLRenderSuiteV1 *gOpenGLRenderSuite = 0;
 #endif
-#ifdef OFX_EXTENSIONS_NUKE
-    NukeOfxCameraSuiteV1* gCameraParameterSuite = 0;
-    FnOfxImageEffectPlaneSuiteV1* gImageEffectPlaneSuiteV1 = 0;
-    FnOfxImageEffectPlaneSuiteV2* gImageEffectPlaneSuiteV2 = 0;
-#endif
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-    OfxHWNDInteractSuiteV1 *gHWNDInteractSuite = 0;
-#endif // #if defined(WIN32) || defined(WIN64)
-    OfxVegasProgressSuiteV1 *gVegasProgressSuite = 0;
-    OfxVegasStereoscopicImageSuiteV1 *gVegasStereoscopicImageSuite = 0;
-    OfxVegasKeyframeSuiteV1 *gVegasKeyframeSuite = 0;
-#endif
 
     // @brief the set of descriptors, one per context used by kOfxActionDescribeInContext,
     //'eContextNone' is the one used by the kOfxActionDescribe
@@ -196,13 +177,6 @@ namespace OFX {
     if(s == kOfxImageEffectContextPaint) return eContextPaint;
     if(s == kOfxImageEffectContextGeneral) return eContextGeneral;
     if(s == kOfxImageEffectContextRetimer) return eContextRetimer;
-#ifdef OFX_EXTENSIONS_TUTTLE
-    if(s == kOfxImageEffectContextReader) return eContextReader;
-    if(s == kOfxImageEffectContextWriter) return eContextWriter;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    if(s == kNatronOfxImageEffectContextTracker) return eContextTracker;
-#endif
     OFX::Log::error(true, "Unknown image effect context '%s'", s.c_str());
     throw std::invalid_argument(s);
   }
@@ -222,16 +196,6 @@ namespace OFX {
         return kOfxImageEffectContextGeneral;
       case eContextRetimer:
         return kOfxImageEffectContextRetimer;
-#ifdef OFX_EXTENSIONS_TUTTLE
-      case eContextReader:
-        return kOfxImageEffectContextReader;
-      case eContextWriter:
-        return kOfxImageEffectContextWriter;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-      case eContextTracker:
-        return kNatronOfxImageEffectContextTracker;
-#endif
       default:
         OFX::Log::error(true, "Unknown context enum '%d'", (int)context);
         throw std::invalid_argument("unknown ContextEnum");
@@ -295,17 +259,6 @@ namespace OFX {
     else if(str == kOfxBitDepthFloat) {
       return eBitDepthFloat;
     }
-#ifdef OFX_EXTENSIONS_VEGAS
-    else if(str == kOfxBitDepthByteBGR) {
-      return eBitDepthUByteBGRA;
-    }
-    else if(str == kOfxBitDepthShortBGR) {
-      return eBitDepthUShortBGRA;
-    }
-    else if(str == kOfxBitDepthFloatBGR) {
-      return eBitDepthFloatBGRA;
-    }
-#endif
     else if(str == kOfxBitDepthNone) {
       return eBitDepthNone;
     }
@@ -326,14 +279,6 @@ namespace OFX {
         return kOfxBitDepthHalf;
       case eBitDepthFloat:
         return kOfxBitDepthFloat;
-#ifdef OFX_EXTENSIONS_VEGAS
-      case eBitDepthUByteBGRA:
-        return kOfxBitDepthByteBGR;
-      case eBitDepthUShortBGRA:
-        return kOfxBitDepthShortBGR;
-      case eBitDepthFloatBGRA:
-        return kOfxBitDepthFloatBGR;
-#endif
       case eBitDepthNone:
         return kOfxBitDepthNone;
       case eBitDepthCustom:
@@ -359,19 +304,6 @@ namespace OFX {
     else if(str == kOfxImageComponentNone) {
       return ePixelComponentNone;
     }
-#ifdef OFX_EXTENSIONS_NUKE
-    else if(str == kFnOfxImageComponentMotionVectors) {
-        return ePixelComponentMotionVectors;
-    }
-    else if(str == kFnOfxImageComponentStereoDisparity) {
-        return ePixelComponentStereoDisparity;
-    }
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    else if (str == kNatronOfxImageComponentXY) {
-        return ePixelComponentXY;
-    }
-#endif
     else {
       return ePixelComponentCustom;
     }
@@ -389,16 +321,6 @@ namespace OFX {
         return kOfxImageComponentAlpha;
       case ePixelComponentNone:
         return kOfxImageComponentNone;
-#ifdef OFX_EXTENSIONS_NUKE
-      case ePixelComponentMotionVectors:
-        return kFnOfxImageComponentMotionVectors;
-      case ePixelComponentStereoDisparity:
-        return kFnOfxImageComponentStereoDisparity;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-      case ePixelComponentXY:
-        return kNatronOfxImageComponentXY;
-#endif
       case ePixelComponentCustom:
         return "OfxImageComponentCustom";
       default:
@@ -443,65 +365,6 @@ namespace OFX {
       throw std::invalid_argument("");
     }
   }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief map a std::string to a RenderQuality */
-  VegasRenderQualityEnum mapToVegasRenderQualityEnum(const std::string &s) throw(std::invalid_argument)
-  {
-    if(s == kOfxImageEffectPropRenderQualityDraft  )       return eVegasRenderQualityDraft;
-    if(s == kOfxImageEffectPropRenderQualityPreview)       return eVegasRenderQualityPreview;
-    if(s == kOfxImageEffectPropRenderQualityGood   )       return eVegasRenderQualityGood;
-    if(s.empty() || s == kOfxImageEffectPropRenderQualityBest   )       return eVegasRenderQualityBest;
-    OFX::Log::error(true, "Unknown Vegas RenderQuality '%s'", s.c_str());
-    throw std::invalid_argument(s);
-  }
-
-  /** @brief map a std::string to a context */
-  VegasContextEnum mapToVegasContextEnum(const std::string &s) throw(std::invalid_argument)
-  {
-    if(s.empty() || s == kOfxImageEffectPropVegasContextUnknown)       return eVegasContextUnknown;
-    if(s == kOfxImageEffectPropVegasContextMedia)         return eVegasContextMedia;
-    if(s == kOfxImageEffectPropVegasContextTrack)         return eVegasContextTrack;
-    if(s == kOfxImageEffectPropVegasContextEvent)         return eVegasContextEvent;
-    if(s == kOfxImageEffectPropVegasContextEventFadeIn)   return eVegasContextEventFadeIn;
-    if(s == kOfxImageEffectPropVegasContextEventFadeOut)  return eVegasContextEventFadeOut;
-    if(s == kOfxImageEffectPropVegasContextProject)       return eVegasContextProject;
-    if(s == kOfxImageEffectPropVegasContextGenerator)     return eVegasContextGenerator;
-    OFX::Log::error(true, "Unknown Vegas image effect context '%s'", s.c_str());
-    throw std::invalid_argument(s);
-  }
-#endif
-
-#if defined(OFX_EXTENSIONS_NATRON)
-  /** @brief extract layer name (first element) and channel names (other elements) from the kOfxImageEffectPropComponents property value, @see getPixelComponentsProperty() */
-  std::vector<std::string> mapPixelComponentCustomToLayerChannels(const std::string& comp)
-  {
-    std::vector<std::string> retval;
-
-    const std::size_t foundPlaneLen = std::strlen(kNatronOfxImageComponentsPlane);
-    std::size_t foundPlane = comp.find(kNatronOfxImageComponentsPlane);
-    if (foundPlane == std::string::npos) {
-      return retval;
-    }
-
-    std::size_t foundChannel = comp.find(kNatronOfxImageComponentsPlaneChannel, foundPlane + foundPlaneLen);
-    if (foundChannel == std::string::npos) {
-      return retval;
-    }
-
-    retval.push_back(comp.substr(foundPlane + foundPlaneLen, foundChannel - (foundPlane + foundPlaneLen)));
-
-    const std::size_t foundChannelLen = std::strlen(kNatronOfxImageComponentsPlaneChannel);
-    while (foundChannel != std::string::npos) {
-      std::size_t nextChannel = comp.find(kNatronOfxImageComponentsPlaneChannel, foundChannel + foundChannelLen);
-      std::string chan = comp.substr(foundChannel + foundChannelLen, nextChannel - (foundChannel + foundChannelLen));
-      retval.push_back(chan);
-      foundChannel = nextChannel;
-    }
-
-    return retval;
-  }
-#endif
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -569,20 +432,6 @@ namespace OFX {
     case ePixelComponentAlpha :
       _clipProps.propSetString(kOfxImageEffectPropSupportedComponents, kOfxImageComponentAlpha, n);
       break;
-#ifdef OFX_EXTENSIONS_NUKE
-    case ePixelComponentMotionVectors :
-      _clipProps.propSetString(kOfxImageEffectPropSupportedComponents, kFnOfxImageComponentMotionVectors, n);
-      break;
-
-    case ePixelComponentStereoDisparity :
-      _clipProps.propSetString(kOfxImageEffectPropSupportedComponents, kFnOfxImageComponentStereoDisparity, n);
-      break;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    case ePixelComponentXY:
-      _clipProps.propSetString(kOfxImageEffectPropSupportedComponents, kNatronOfxImageComponentXY, n);
-      break;
-#endif
     case ePixelComponentCustom :
       break;
     }
@@ -619,14 +468,6 @@ namespace OFX {
   {
     _clipProps.propSetInt(kOfxImageClipPropIsMask, int(v));
   }
-
-#ifdef OFX_EXTENSIONS_NUKE
-  /** @brief say whether this clip may contain images with a transform attached */
-  void ClipDescriptor::setCanTransform(bool v)
-  {
-    _clipProps.propSetInt(kFnOfxImageEffectCanTransform, int(v), false);
-  }
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   // image effect descriptor
@@ -735,19 +576,6 @@ namespace OFX {
     case eContextRetimer :
       _effectProps.propSetString(kOfxImageEffectPropSupportedContexts, kOfxImageEffectContextRetimer, n);
       break;
-#ifdef OFX_EXTENSIONS_TUTTLE
-    case eContextReader :
-      _effectProps.propSetString(kOfxImageEffectPropSupportedContexts, kOfxImageEffectContextReader, n);
-      break;
-    case eContextWriter :
-      _effectProps.propSetString(kOfxImageEffectPropSupportedContexts, kOfxImageEffectContextWriter, n);
-      break;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    case eContextTracker:
-      _effectProps.propSetString(kOfxImageEffectPropSupportedContexts, kNatronOfxImageEffectContextTracker, n);
-      break;
-#endif
     }
   }
 
@@ -758,16 +586,6 @@ namespace OFX {
       _effectProps.propSetPointer(kOfxImageEffectPluginPropOverlayInteractV1, (void*)desc->getMainEntry());
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-  void ImageEffectDescriptor::setHWNDInteractDescriptor(HWNDInteractDescriptor* desc)
-  {
-    _hwndInteractDescriptor.reset(desc);
-    if(desc->getMainEntry())
-      _effectProps.propSetPointer(kOfxImageEffectPluginPropHWndInteractV1, (void*)desc->getMainEntry());
-  }
-#endif // #if defined(WIN32) || defined(WIN64)
-#endif
 
   /** @brief Add a pixel depth to those supported */
   void ImageEffectDescriptor::addSupportedBitDepth(BitDepthEnum v)
@@ -790,17 +608,6 @@ namespace OFX {
     case eBitDepthFloat :
       _effectProps.propSetString(kOfxImageEffectPropSupportedPixelDepths, kOfxBitDepthFloat  , n);
       break;
-#ifdef OFX_EXTENSIONS_VEGAS
-    case eBitDepthUByteBGRA :
-      _effectProps.propSetString(kOfxImageEffectPropSupportedPixelDepths, kOfxBitDepthByteBGR  , n);
-      break;
-    case eBitDepthUShortBGRA :
-      _effectProps.propSetString(kOfxImageEffectPropSupportedPixelDepths, kOfxBitDepthShortBGR  , n);
-      break;
-    case eBitDepthFloatBGRA :
-      _effectProps.propSetString(kOfxImageEffectPropSupportedPixelDepths, kOfxBitDepthFloatBGR  , n);
-      break;
-#endif
     case eBitDepthCustom :
       break;
     }
@@ -834,58 +641,6 @@ namespace OFX {
   }
 #endif
 
-#ifdef OFX_EXTENSIONS_TUTTLE
-  /** @brief Add a file extension to those supported */
-  void ImageEffectDescriptor::addSupportedExtension(const std::string& extension)
-  {
-    // only Tuttle support this property ( out of standard )
-    //if( OFX::Private::gHostDescription.hostName == "TuttleOfx" ) {
-    try {
-      const int n = _effectProps.propGetDimension( kTuttleOfxImageEffectPropSupportedExtensions );
-      _effectProps.propSetString(kTuttleOfxImageEffectPropSupportedExtensions, extension, n);
-    } catch (OFX::Exception::PropertyUnknownToHost &e) {
-      // ignore exception
-    }
-  }
-
-  void ImageEffectDescriptor::addSupportedExtensions(const std::vector<std::string>& extensions)
-  {
-    // only Tuttle support this property ( out of standard )
-    //if( OFX::Private::gHostDescription.hostName == "TuttleOfx" ) {
-    try {
-      int n = _effectProps.propGetDimension( kTuttleOfxImageEffectPropSupportedExtensions );
-      
-        for (std::vector<std::string>::const_iterator it = extensions.begin(); it != extensions.end(); ++it, ++n) {
-        _effectProps.propSetString(kTuttleOfxImageEffectPropSupportedExtensions, *it, n);
-      }
-    } catch (OFX::Exception::PropertyUnknownToHost &e) {
-      // ignore exception
-    }
-  }
-
-  void ImageEffectDescriptor::addSupportedExtensions(const char*extensions[])
-  {
-    // only Tuttle support this property ( out of standard )
-    //if( OFX::Private::gHostDescription.hostName == "TuttleOfx" ) {
-    try {
-      int n = _effectProps.propGetDimension( kTuttleOfxImageEffectPropSupportedExtensions );
-      
-      while (*extensions) {
-        _effectProps.propSetString(kTuttleOfxImageEffectPropSupportedExtensions, *extensions, n);
-        ++extensions;
-        ++n;
-      }
-    } catch (OFX::Exception::PropertyUnknownToHost &e) {
-      // ignore exception
-    }
-  }
-
-  void ImageEffectDescriptor::setPluginEvaluation(double evaluation)
-  {
-    // This property is an extension, so it's optional.
-    _effectProps.propSetDouble( kTuttleOfxImageEffectPropEvaluation, evaluation, false );
-  }
-#endif
 
   /** @brief Is the plugin single instance only ? */
   void ImageEffectDescriptor::setSingleInstance(bool v)
@@ -952,24 +707,6 @@ namespace OFX {
     }
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  void ImageEffectDescriptor::setPresetThumbnailHint(VegasPresetThumbnailEnum v)
-  {
-    switch(v) 
-    {
-    case eVegasPresetThumbnailDefault :
-      _effectProps.propSetString(kOfxProbPluginVegasPresetThumbnail, kOfxProbPluginVegasPresetThumbnailDefault);
-      break;
-    case eVegasPresetThumbnailSolidImage :
-      _effectProps.propSetString(kOfxProbPluginVegasPresetThumbnail, kOfxProbPluginVegasPresetThumbnailSolidImage);
-      break;
-    case eVegasPresetThumbnailImageWithAlpha :
-      _effectProps.propSetString(kOfxProbPluginVegasPresetThumbnail, kOfxProbPluginVegasPresetThumbnailImageWithAlpha);
-      break;
-    }
-  }
-#endif
-
 #ifdef OFX_SUPPORTS_OPENGLRENDER
   /** @brief Does the plugin support OpenGL accelerated rendering (but is also capable of CPU rendering) ? */
   void ImageEffectDescriptor::setSupportsOpenGLRender(bool v) {
@@ -994,75 +731,12 @@ namespace OFX {
   }
 #endif
 
-#ifdef OFX_EXTENSIONS_NUKE
-  /** @brief indicate that a plugin or host can handle transform effects */
-  void ImageEffectDescriptor::setCanTransform(bool v)
-  {
-    // the header says this property is on the effect instance, but on Nuke it only exists on the effect descriptor
-    if (gHostDescription.canTransform) {
-      _effectProps.propSetInt(kFnOfxImageEffectCanTransform, int(v), false);
-    }
-  }
-    
-  /** @brief Indicates that a host or plugin can fetch more than a type of image from a clip*/
-  void ImageEffectDescriptor::setIsMultiPlanar(bool v)
-  {
-    if (gHostDescription.isMultiPlanar) {
-      _effectProps.propSetInt(kFnOfxImageEffectPropMultiPlanar, int(v), false);
-    }
-  }
-    
-  void ImageEffectDescriptor::setPassThroughForNotProcessedPlanes(PassThroughLevelEnum v)
-  {
-    if (gHostDescription.isMultiPlanar) {
-        _effectProps.propSetInt(kFnOfxImageEffectPropPassThroughComponents, int(v), false);
-    }
-  }
-    
-  /** @brief Indicates to the host that the plugin is view aware, in which case it will have to use the view calls*/
-  void ImageEffectDescriptor::setIsViewAware(bool v)
-  {
-    if (OFX::Private::gImageEffectPlaneSuiteV2) {
-      _effectProps.propSetInt(kFnOfxImageEffectPropViewAware, int(v), false);
-    }
-  }
-    
-  /** @brief Indicates to the host that a view aware plugin produces the same image independent of the view being rendered*/
-  void ImageEffectDescriptor::setIsViewInvariant(ViewInvarianceLevelEnum v)
-  {
-    if (OFX::Private::gImageEffectPlaneSuiteV2) {
-      _effectProps.propSetInt(kFnOfxImageEffectPropViewInvariance, int(v), false);
-    }
-  }
-#endif
-
   /** @brief If the slave param changes the clip preferences need to be re-evaluated */
   void ImageEffectDescriptor::addClipPreferencesSlaveParam(ParamDescriptor &p)
   {
     int n = _effectProps.propGetDimension(kOfxImageEffectPropClipPreferencesSlaveParam);
     _effectProps.propSetString(kOfxImageEffectPropClipPreferencesSlaveParam, p.getName(), n);
   }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief Add a guid to tell Vegas that this plug-in can uplift the guid of that older plug-in */
-  void ImageEffectDescriptor::addVegasUpgradePath(const std::string &guidString)
-  {
-    int n = _effectProps.propGetDimension(kOfxImageEffectPropVegasUpliftGUID);
-    _effectProps.propSetString(kOfxImageEffectPropVegasUpliftGUID, guidString.c_str(), n);
-  }
-
-  /** @brief sets the path to a help file, defaults to none, must be called at least once */
-  void ImageEffectDescriptor::setHelpPath(const std::string &helpPathString)
-  {
-    _effectProps.propSetString(kOfxImageEffectPropHelpFile, helpPathString.c_str());
-  }
-
-  /** @brief sets the context ID to a help file if it's a .chm file, defaults to none, must be called at least once */
-  void ImageEffectDescriptor::setHelpContextID(int helpContextID)
-  {
-    _effectProps.propSetInt(kOfxImageEffectPropHelpContextID, helpContextID);
-  }
-#endif
 
   /** @brief Create a clip, only callable from describe in context */
   ClipDescriptor *ImageEffectDescriptor::defineClip(const std::string &name)
@@ -1086,28 +760,8 @@ namespace OFX {
     _clipPARPropNames[name] = std::string("OfxImageClipPropPAR_") + name;
     _clipROIPropNames[name] = std::string("OfxImageClipPropRoI_") + name;
     _clipFrameRangePropNames[name] = std::string("OfxImageClipPropFrameRange_") + name;
-#ifdef OFX_EXTENSIONS_NUKE
-    _clipPlanesPropNames[name] = std::string(kFnOfxImageEffectActionGetClipComponentsPropString) + name;
-    _clipFrameViewsPropNames[name] = std::string("OfxImageClipPropFrameRangeView_") + name;
-#endif
     return clip;
   }
-
-#ifdef OFX_EXTENSIONS_NATRON
-  /** @brief indicate if the host may add a channel selector */
-  void ImageEffectDescriptor::setChannelSelector(PixelComponentEnum v)
-  {
-    if (gHostDescription.supportsChannelSelector) {
-      _effectProps.propSetString(kNatronOfxImageEffectPropChannelSelector, mapPixelComponentEnumToStr(v), false);
-    }
-  }
-
-  /** @brief indicate that this plugin is deprecated */
-  void ImageEffectDescriptor::setIsDeprecated(bool v)
-  {
-    _effectProps.propSetInt(kNatronOFXImageEffectPropDeprecated, v, false);
-  }
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   // wraps up an image  
@@ -1130,30 +784,14 @@ namespace OFX {
       case ePixelComponentNone:
         _pixelComponentCount = 0;
         break;
-#ifdef OFX_EXTENSIONS_NUKE
-      case ePixelComponentMotionVectors:
-      case ePixelComponentStereoDisparity:
-        _pixelComponentCount = 2;
-        break;
-#endif
       case ePixelComponentRGB:
         _pixelComponentCount = 3;
         break;
       case ePixelComponentRGBA:
         _pixelComponentCount = 4;
         break;
-#ifdef OFX_EXTENSIONS_NATRON
-      case ePixelComponentXY:
-        _pixelComponentCount = 2;
-        break;
-#endif
       case ePixelComponentCustom:
-#ifdef OFX_EXTENSIONS_NATRON
-        // first element in the vector is the layer name (if any)
-        _pixelComponentCount = std::max((int)mapPixelComponentCustomToLayerChannels(str).size() - 1, 0);
-#else
         _pixelComponentCount = 0;
-#endif
         break;
       default:
         _pixelComponentCount = 0;
@@ -1173,11 +811,6 @@ namespace OFX {
     case eBitDepthUShort : _pixelBytes *= 2; break;
     case eBitDepthHalf   : _pixelBytes *= 2; break;
     case eBitDepthFloat  : _pixelBytes *= 4; break;
-#ifdef OFX_EXTENSIONS_VEGAS
-    case eBitDepthUByteBGRA  : _pixelBytes *= 1; break;
-    case eBitDepthUShortBGRA : _pixelBytes *= 2; break;
-    case eBitDepthFloatBGRA  : _pixelBytes *= 4; break;
-#endif
     case eBitDepthCustom : _pixelBytes *= 0; break;
     }
 
@@ -1216,22 +849,6 @@ namespace OFX {
 
     _renderScale.x = _imageProps.propGetDouble(kOfxImageEffectPropRenderScale, 0);
     _renderScale.y = _imageProps.propGetDouble(kOfxImageEffectPropRenderScale, 1);
-#ifdef OFX_EXTENSIONS_NUKE
-    std::fill(_transform, _transform + 9, 0.);
-    if (_imageProps.propGetDimension(kFnOfxPropMatrix2D, false) == 0) {
-      // Host does not support transforms, just ignore
-      _transformIsIdentity = true;
-    } else {
-      for (int i = 0; i < 9; ++i) {
-        _transform[i] = _imageProps.propGetDouble(kFnOfxPropMatrix2D, i);
-      }
-      // check if the transform is identity (a zero matrix is considered identity)
-      _transformIsIdentity = (_transform[1] == 0. && _transform[2] == 0. &&
-                              _transform[3] == 0. && _transform[5] == 0. &&
-                              _transform[6] == 0. && _transform[7] == 0. &&
-                              _transform[0] == _transform[2] && _transform[0] == _transform[8]);
-    }
-#endif
   }
 
   ImageBase::~ImageBase()
@@ -1312,9 +929,6 @@ namespace OFX {
     , _clipProps(props)
     , _clipHandle(handle)
     , _effect(effect)
-#ifdef OFX_EXTENSIONS_VEGAS
-    , _pixelOrder(ePixelOrderRGBA)
-#endif
   {
     OFX::Validation::validateClipInstanceProperties(_clipProps);
   }
@@ -1393,26 +1007,12 @@ namespace OFX {
         return 1;
       case ePixelComponentNone:
         return 0;
-#ifdef OFX_EXTENSIONS_NUKE
-      case ePixelComponentMotionVectors:
-      case ePixelComponentStereoDisparity:
-        return 2;
-#endif
       case ePixelComponentRGB:
         return 3;
       case ePixelComponentRGBA:
         return 4;
-#ifdef OFX_EXTENSIONS_NATRON
-      case ePixelComponentXY:
-        return 2;
-#endif
       case ePixelComponentCustom:
-#ifdef OFX_EXTENSIONS_NATRON
-        // first element in the vector is the layer name (if any)
-        return std::max((int)mapPixelComponentCustomToLayerChannels(str).size() - 1, 0);
-#else
         return 0;
-#endif
       default:
         return 0;
     }
@@ -1489,26 +1089,6 @@ namespace OFX {
     }
     return e;
   }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief get the pixel order of this image */
-  PixelOrderEnum Clip::getPixelOrder(void) const
-  {
-    // only vegas supports this so far, so ignore it if it doesn't work
-    std::string str = _clipProps.propGetString(kOfxImagePropPixelOrder, false);
-    PixelOrderEnum e;
-    if(str == kOfxImagePixelOrderRGBA) {
-      e = ePixelOrderRGBA;
-    }
-    else if(str == kOfxImagePixelOrderBGRA) {
-      e = ePixelOrderBGRA;
-    }
-    else {
-      e = ePixelOrderRGBA;
-    }
-    return e;
-  }
-#endif
 
   /** @brief is the clip connected */
   bool Clip::isConnected(void) const
@@ -1601,114 +1181,6 @@ namespace OFX {
 
     return new Image(imageHandle);
   }
-    
-#ifdef OFX_EXTENSIONS_NUKE
-  OfxRectD Clip::getRegionOfDefinition(double t, int view)
-  {
-    if (!OFX::Private::gImageEffectPlaneSuiteV2) {
-      return getRegionOfDefinition(t);
-    }
-    OfxRectD bounds;
-    OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV2->clipGetRegionOfDefinition(_clipHandle, t, view,  &bounds);
-    if(stat == kOfxStatFailed) {
-      bounds.x1 = bounds.x2 = bounds.y1 = bounds.y2 = 0;
-    }
-    throwSuiteStatusException(stat);
-    return bounds;
-  }
-
-  Image* Clip::fetchImagePlane(double t, int view, const char* plane)
-  {
-    if (!OFX::Private::gImageEffectPlaneSuiteV2) {
-      throwHostMissingSuiteException("clipGetImagePlane");
-    }
-    OfxPropertySetHandle imageHandle;
-    OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV2->clipGetImagePlane(_clipHandle, t, view, plane, NULL, &imageHandle);
-    if(stat == kOfxStatFailed) {
-      return NULL; // not an error, fetched images out of range/region, assume black and transparent
-    }
-    else
-      throwSuiteStatusException(stat);
-      
-    return new Image(imageHandle);
-  }
-    
-  Image* Clip::fetchImagePlane(double t, const char* plane)
-  {
-    if (!OFX::Private::gImageEffectPlaneSuiteV1) {
-      throwHostMissingSuiteException("clipGetImagePlane");
-    }
-    OfxPropertySetHandle imageHandle;
-    OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV1->clipGetImagePlane(_clipHandle, t, plane, NULL, &imageHandle);
-    if(stat == kOfxStatFailed) {
-      return NULL; // not an error, fetched images out of range/region, assume black and transparent
-    }
-    else
-      throwSuiteStatusException(stat);
-      
-    return new Image(imageHandle);
-  }
-    
-  Image* Clip::fetchImagePlane(double t, int view, const char* plane, const OfxRectD& bounds)
-  {
-    if (!OFX::Private::gImageEffectPlaneSuiteV2) {
-      throwHostMissingSuiteException("clipGetImagePlane");
-    }
-    OfxPropertySetHandle imageHandle;
-    OfxRectD boundsCopy = bounds;
-
-    OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV2->clipGetImagePlane(_clipHandle, t, view, plane, &boundsCopy, &imageHandle);
-    if(stat == kOfxStatFailed) {
-      return NULL; // not an error, fetched images out of range/region, assume black and transparent
-    }
-    else
-      throwSuiteStatusException(stat);
-
-    return new Image(imageHandle);
-  }
-    
-  Image* Clip::fetchImagePlane(double t, const char* plane, const OfxRectD& bounds)
-  {
-    if (!OFX::Private::gImageEffectPlaneSuiteV1) {
-      throwHostMissingSuiteException("clipGetImagePlane");
-    }
-    OfxPropertySetHandle imageHandle;
-    OfxRectD boundsCopy = bounds;
-
-    OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV1->clipGetImagePlane(_clipHandle, t, plane, &boundsCopy, &imageHandle);
-    if(stat == kOfxStatFailed) {
-      return NULL; // not an error, fetched images out of range/region, assume black and transparent
-    }
-    else
-      throwSuiteStatusException(stat);
-
-    return new Image(imageHandle);
-  }
-    
-  std::list<std::string> Clip::getComponentsPresent() const
-  {
-    std::list<std::string> ret = _clipProps.propGetNString(kFnOfxImageEffectPropComponentsPresent, false);
-    return ret;
-  }
-#endif
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief fetch an image */
-  Image *Clip::fetchStereoscopicImage(double t, int view)
-  {
-    if(!OFX::Private::gVegasStereoscopicImageSuite){ throwHostMissingSuiteException("clipGetStereoscopicImage"); }
-    if(!OFX::Private::gVegasStereoscopicImageSuite->clipGetStereoscopicImage){ throwHostMissingSuiteException("clipGetStereoscopicImage"); }
-    OfxPropertySetHandle imageHandle;
-    OfxStatus stat = OFX::Private::gVegasStereoscopicImageSuite->clipGetStereoscopicImage(_clipHandle, t, view, NULL, &imageHandle);
-    if(stat == kOfxStatFailed) {
-      return NULL; // not an error, fetched images out of range/region, assume black and transparent
-    }
-    else
-      throwSuiteStatusException(stat);
-
-    return new Image(imageHandle);
-  }
-#endif
 
 #ifdef OFX_SUPPORTS_OPENGLRENDER
   Texture *Clip::loadTexture(double t, BitDepthEnum format, const OfxRectD *region)
@@ -1776,16 +1248,6 @@ namespace OFX {
   {
     return _context;
   }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief the Vegas context this effect exists in */
-  VegasContextEnum ImageEffect::getVegasContext(void)
-  {
-    // fetch the context
-    std::string ctxt = _effectProps.propGetString(kOfxImageEffectPropVegasContext);
-    return mapToVegasContextEnum(ctxt);
-  }
-#endif
 
   /** @brief size of the project */
   OfxPointD ImageEffect::getProjectSize(void) const
@@ -1949,16 +1411,6 @@ namespace OFX {
     // return it
     return newClip;
   }
-
-#ifdef OFX_EXTENSIONS_NUKE
-  /** @brief Fetch a camera param */
-  CameraParam* ImageEffect::fetchCameraParam(const std::string& name) const
-  {
-    CameraParam *paramPtr;
-    fetchAttribute(_effectHandle, name, paramPtr);
-    return paramPtr;
-  }
-#endif
 
   /** @brief does the host want us to abort rendering? */
   bool ImageEffect::abort(void) const
@@ -2132,71 +1584,6 @@ namespace OFX {
   }
 #endif
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief Vegas requires conversion of keyframe data */
-  void ImageEffect::upliftVegasKeyframes(const SonyVegasUpliftArguments &/*upliftInfo*/)
-  {
-    // fa niente
-  }
-
-  /** @brief Vegas requests custom about dialog */
-  bool ImageEffect::invokeAbout()
-  {
-    // by default, do nothing
-    return false;
-  }
-
-  /** @brief Vegas requests custom help dialog */
-  bool ImageEffect::invokeHelp()
-  {
-    // by default, do nothing
-    return false;
-  }
-#endif
-
-#ifdef OFX_EXTENSIONS_NUKE
-  void ImageEffect::getClipComponents(const ClipComponentsArguments& /*args*/, ClipComponentsSetter& /*clipComponents*/)
-  {
-        // pass
-  }
-    
-  void ImageEffect::getFrameViewsNeeded(const FrameViewsNeededArguments & /*args*/, FrameViewsNeededSetter & /*frameViews*/)
-  {
-        // pass
-  }
-    
-  /** @brief recover a transform matrix from an effect */
-  bool ImageEffect::getTransform(const TransformArguments &/*args*/, Clip * &/*transformClip*/, double /*transformMatrix*/[9])
-  {
-    // by default, do the default
-    return false;
-  }
-    
-    
-  std::string ImageEffect::getViewName(int viewIndex) const
-  {
-      const char* viewName;
-      OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV2->getViewName(_effectHandle, viewIndex, &viewName);
-      if(stat == kOfxStatFailed) {
-          return std::string();
-      }
-      throwSuiteStatusException(stat);
-      return std::string(viewName);
-  }
-    
-  int ImageEffect::getViewCount() const
-  {
-      int viewCount;
-      OfxStatus stat = OFX::Private::gImageEffectPlaneSuiteV2->getViewCount(_effectHandle, &viewCount);
-      if(stat == kOfxStatFailed) {
-          return 0;
-      }
-      throwSuiteStatusException(stat);
-      return viewCount;
-  }
-
-#endif
-
   /** @brief called when a custom param needs to be interpolated */
   std::string ImageEffect::interpolateCustomParam(const InterpolateCustomArgs &args, const std::string &/*paramName*/)
   {
@@ -2209,11 +1596,6 @@ namespace OFX {
     if(OFX::Private::gProgressSuiteV2) {
       OfxStatus stat = OFX::Private::gProgressSuiteV2->progressStart((void *) _effectHandle, message.c_str(), messageid.c_str());
       _progressStartSuccess = ( stat == kOfxStatOK );
-#ifdef OFX_EXTENSIONS_VEGAS
-    } else if(OFX::Private::gVegasProgressSuite) {
-        OfxStatus stat = OFX::Private::gVegasProgressSuite->progressStart((void *) _effectHandle, message.c_str(), messageid.c_str());
-        _progressStartSuccess = ( stat == kOfxStatOK );
-#endif
     } else if(OFX::Private::gProgressSuiteV1) {
       OfxStatus stat = OFX::Private::gProgressSuiteV1->progressStart((void *) _effectHandle, message.c_str());
       _progressStartSuccess = ( stat == kOfxStatOK );
@@ -2242,12 +1624,6 @@ namespace OFX {
         OfxStatus stat = OFX::Private::gProgressSuiteV2->progressUpdate((void *) _effectHandle, t);
         if(stat == kOfxStatReplyNo)
           return false;
-#ifdef OFX_EXTENSIONS_VEGAS
-      } else if(OFX::Private::gVegasProgressSuite) {
-          OfxStatus stat = OFX::Private::gVegasProgressSuite->progressUpdate((void *) _effectHandle, t);
-          if(stat == kOfxStatReplyNo)
-              return false;
-#endif
       } else if(OFX::Private::gProgressSuiteV1) {
         OfxStatus stat = OFX::Private::gProgressSuiteV1->progressUpdate((void *) _effectHandle, t);
         if(stat == kOfxStatReplyNo)
@@ -2287,149 +1663,6 @@ namespace OFX {
     t1 = t2 = 0;
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  ////////////////////////////////////////////////////////////////////////////////
-  // Class used to uplift previous vegas keyframe data of the effect. */ 
-  SonyVegasUpliftArguments::SonyVegasUpliftArguments(PropertySet args)
-    : guidUplift()
-    , keyframeCount(0)
-    , commonData(0)
-    , commonDataSize(0)
-  {
-      _argProps = args;
-  }
-
-  void*  SonyVegasUpliftArguments::getKeyframeData     (int keyframeIndex) const
-  {
-      return _argProps.propGetPointer(kOfxPropVegasUpliftKeyframeData, keyframeIndex);
-  }
-
-  int    SonyVegasUpliftArguments::getKeyframeDataSize (int keyframeIndex) const
-  {
-      return _argProps.propGetInt(kOfxPropVegasUpliftKeyframeDataLength, keyframeIndex);
-  }
-
-  double SonyVegasUpliftArguments::getKeyframeTime     (int keyframeIndex) const
-  {
-      return _argProps.propGetDouble(kOfxPropVegasUpliftKeyframeTime, keyframeIndex);
-  }
-
-  VegasInterpolationEnum SonyVegasUpliftArguments::getKeyframeInterpolation (int keyframeIndex) const
-  {
-      return mapToInterpolationEnum(_argProps.propGetString(kOfxPropVegasUpliftKeyframeInterpolation, keyframeIndex));
-  }
-#endif
-    
-#ifdef OFX_EXTENSIONS_NUKE
-  const std::string& ClipComponentsSetter::extractValueForName(const StringStringMap& m, const std::string& name)
-  {
-      StringStringMap::const_iterator it = m.find(name);
-      if(it==m.end())
-          throw(Exception::PropertyUnknownToHost(name.c_str()));
-      return it->second;
-  }
-  
-  bool ClipComponentsSetter::setOutProperties()
-  {
-      for (std::map<std::string,std::vector<std::string> >::iterator it = _clipComponents.begin(); it!=_clipComponents.end(); ++it) {
-          const std::string& propName = extractValueForName(_clipPlanesPropNames, it->first);
-          for (std::size_t i = 0; i < it->second.size(); ++i) {
-              _outArgs.propSetString(propName.c_str(), it->second[i], (int)i, true);
-          }
-      }
-      return _doneSomething;
-  }
- 
-  void ClipComponentsSetter::addClipComponents(Clip& clip, PixelComponentEnum comps)
-  {
-      _doneSomething = true;
-      std::string compName;
-      switch(comps)
-      {
-        case ePixelComponentNone :
-            compName = kOfxImageComponentNone;
-            break;
-        case ePixelComponentRGBA :
-            compName = kOfxImageComponentRGBA;
-            break;
-        case ePixelComponentRGB :
-            compName = kOfxImageComponentRGB;
-            break;
-        case ePixelComponentAlpha :
-            compName = kOfxImageComponentAlpha;
-            break;
-#ifdef OFX_EXTENSIONS_NUKE
-        case ePixelComponentMotionVectors :
-            compName = kFnOfxImageComponentMotionVectors;
-            break;
-        case ePixelComponentStereoDisparity :
-            compName = kFnOfxImageComponentStereoDisparity;
-            break;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-        case ePixelComponentXY:
-            compName = kNatronOfxImageComponentXY;
-            break;
-#endif
-        case ePixelComponentCustom :
-            break;
-      }
-      _clipComponents[clip.name()].push_back(compName);
-      
-  }
-    
-  void ClipComponentsSetter::addClipComponents(Clip& clip, const std::string& comps)
-  {
-     _doneSomething = true;
-     _clipComponents[clip.name()].push_back(comps);
-  }
-    
-  void ClipComponentsSetter::setPassThroughClip(const Clip* clip,double time,int view)
-  {
-      _doneSomething = true;
-      if (clip) {
-        _outArgs.propSetString(kFnOfxImageEffectPropPassThroughClip, clip->name(), 0);
-      } else {
-        _outArgs.propSetString(kFnOfxImageEffectPropPassThroughClip, "", 0);
-      }
-      _outArgs.propSetDouble(kFnOfxImageEffectPropPassThroughTime, time, 0);
-      _outArgs.propSetInt(kFnOfxImageEffectPropPassThroughView, view, 0);
-  }
-
-    
-  const std::string& FrameViewsNeededSetter::extractValueForName(const StringStringMap& m, const std::string& name)
-  {
-        StringStringMap::const_iterator it = m.find(name);
-        if(it==m.end())
-            throw(Exception::PropertyUnknownToHost(name.c_str()));
-        return it->second;
-  }
-
-  bool FrameViewsNeededSetter::setOutProperties()
-  {
-      for (std::map<std::string, std::map<int, std::vector<OfxRangeD> > >::iterator it = _frameViews.begin(); it!=_frameViews.end(); ++it) {
-          int dimIndex = 0;
-          const std::string& propName = extractValueForName(_clipFrameViewsPropnames, it->first);
-          for (std::map<int, std::vector<OfxRangeD> >::iterator it2 = it->second.begin(); it2!=it->second.end(); ++it2) {
-              for (std::vector<OfxRangeD>::iterator it3 = it2->second.begin(); it3 != it2->second.end(); ++it3, dimIndex += 3) {
-                  _outArgs.propSetDouble(propName.c_str(), it3->min, dimIndex);
-                  _outArgs.propSetDouble(propName.c_str(), it3->max, dimIndex + 1);
-                  _outArgs.propSetDouble(propName.c_str(), it2->first, dimIndex + 2);
-              }
-          }
-      }
-      return _doneSomething;
-  }
-
-  void FrameViewsNeededSetter::addFrameViewsNeeded(const Clip& clip,const OfxRangeD &range, int view)
-  {
-      _doneSomething = true;
-      std::map<int, std::vector<OfxRangeD> >& frameViews = _frameViews[clip.name()];
-      std::vector<OfxRangeD>& ranges = frameViews[view];
-      ranges.push_back(range);      
-  }
-#endif
-
   ////////////////////////////////////////////////////////////////////////////////
   // Class used to set the clip preferences of the effect. */ 
 
@@ -2461,19 +1694,6 @@ namespace OFX {
     case ePixelComponentAlpha : 
       outArgs_.propSetString(propName.c_str(), kOfxImageComponentAlpha); 
       break;
-#ifdef OFX_EXTENSIONS_NUKE
-    case ePixelComponentMotionVectors :
-      outArgs_.propSetString(propName.c_str(), kFnOfxImageComponentMotionVectors);
-      break;
-    case ePixelComponentStereoDisparity :
-      outArgs_.propSetString(propName.c_str(), kFnOfxImageComponentStereoDisparity);
-      break;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-    case ePixelComponentXY:
-      outArgs_.propSetString(propName.c_str(), kNatronOfxImageComponentXY);
-      break;
-#endif
     case ePixelComponentCustom :
       break;
     }
@@ -2502,17 +1722,6 @@ namespace OFX {
     case eBitDepthFloat :
       outArgs_.propSetString(propName.c_str(), kOfxBitDepthFloat); 
       break;
-#ifdef OFX_EXTENSIONS_VEGAS
-    case eBitDepthUByteBGRA : 
-      outArgs_.propSetString(propName.c_str(), kOfxBitDepthByteBGR); 
-      break;
-    case eBitDepthUShortBGRA : 
-      outArgs_.propSetString(propName.c_str(), kOfxBitDepthShortBGR); 
-      break;
-    case eBitDepthFloatBGRA : 
-      outArgs_.propSetString(propName.c_str(), kOfxBitDepthFloatBGR); 
-      break;
-#endif
     case eBitDepthCustom :
       break;
     }
@@ -2701,21 +1910,10 @@ namespace OFX {
 #ifdef OFX_SUPPORTS_OPENGLRENDER
         gHostDescription.supportsOpenGLRender = gOpenGLRenderSuite != 0 && hostProps.propGetString(kOfxImageEffectPropOpenGLRenderSupported, 0, false) == "true";
 #endif
-#ifdef OFX_EXTENSIONS_NUKE
-        gHostDescription.supportsCameraParameter    = gCameraParameterSuite != 0;
-        gHostDescription.canTransform               = hostProps.propGetInt(kFnOfxImageEffectCanTransform, false) != 0;
-        gHostDescription.isMultiPlanar              = hostProps.propGetInt(kFnOfxImageEffectPropMultiPlanar, false) != 0;
-#endif
         gHostDescription.maxParameters              = hostProps.propGetInt(kOfxParamHostPropMaxParameters);
         gHostDescription.maxPages                   = hostProps.propGetInt(kOfxParamHostPropMaxPages);
         gHostDescription.pageRowCount               = hostProps.propGetInt(kOfxParamHostPropPageRowColumnCount, 0);
         gHostDescription.pageColumnCount            = hostProps.propGetInt(kOfxParamHostPropPageRowColumnCount, 1);
-#ifdef OFX_EXTENSIONS_NATRON
-        gHostDescription.isNatron                   = hostProps.propGetInt(kNatronOfxHostIsNatron, false) != 0;
-        gHostDescription.supportsDynamicChoices     = hostProps.propGetInt(kNatronOfxParamHostPropSupportsDynamicChoices, false) != 0;
-        gHostDescription.supportsCascadingChoices   = hostProps.propGetInt(kNatronOfxParamPropChoiceCascading, false) != 0;
-        gHostDescription.supportsChannelSelector    = hostProps.propGetString(kNatronOfxImageEffectPropChannelSelector, false) == kOfxImageComponentRGBA;
-#endif
 
         int numComponents = hostProps.propGetDimension(kOfxImageEffectPropSupportedComponents);
         for(int i=0; i<numComponents; ++i)
@@ -2772,38 +1970,19 @@ namespace OFX {
 #ifdef OFX_SUPPORTS_OPENGLRENDER
         gOpenGLRenderSuite = (OfxImageEffectOpenGLRenderSuiteV1*) fetchSuite(kOfxOpenGLRenderSuite, 1, true);
 #endif
-#ifdef OFX_EXTENSIONS_NUKE
-        gCameraParameterSuite = (NukeOfxCameraSuiteV1*) fetchSuite(kNukeOfxCameraSuite, 1, true );
-        gImageEffectPlaneSuiteV1 = (FnOfxImageEffectPlaneSuiteV1*) fetchSuite(kFnOfxImageEffectPlaneSuite, 1, true );
-        gImageEffectPlaneSuiteV2 = (FnOfxImageEffectPlaneSuiteV2*) fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true );
-#endif
-#ifdef OFX_EXTENSIONS_VEGAS
-        gVegasProgressSuite   = (OfxVegasProgressSuiteV1 *)     fetchSuite(kOfxVegasProgressSuite, 1, true);
-        gVegasStereoscopicImageSuite  = (OfxVegasStereoscopicImageSuiteV1 *) fetchSuite(kOfxVegasStereoscopicImageEffectSuite, 1, true);
-        gVegasKeyframeSuite   = (OfxVegasKeyframeSuiteV1 *)     fetchSuite(kOfxVegasKeyframeSuite, 1, true);
-#endif
 
         // OK check and fetch host information
         fetchHostDescription(gHost);
 
         /// and set some dendent flags
         OFX::gHostDescription.supportsMessageSuiteV2 = gMessageSuiteV2 != NULL;
-#ifdef OFX_EXTENSIONS_VEGAS
-        OFX::gHostDescription.supportsProgressSuite = (gProgressSuiteV1 != NULL || gProgressSuiteV2 != NULL || gVegasProgressSuite != NULL);
-#else
         OFX::gHostDescription.supportsProgressSuite = (gProgressSuiteV1 != NULL || gProgressSuiteV2 != NULL);
-#endif
         OFX::gHostDescription.supportsTimeLineSuite = gTimeLineSuite != NULL;
 
         // fetch the interact suite if the host supports interaction
         if(OFX::gHostDescription.supportsOverlays || OFX::gHostDescription.supportsCustomInteract)
           gInteractSuite  = (OfxInteractSuiteV1 *)    fetchSuite(kOfxInteractSuite, 1);
 
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-        gHWNDInteractSuite  = (OfxHWNDInteractSuiteV1 *)    fetchSuite(kOfxHWndInteractSuite, 1, true);
-#endif // #if defined(WIN32) || defined(WIN64)
-#endif
       }
 
       // initialise the validation code
@@ -2836,18 +2015,6 @@ namespace OFX {
         gMessageSuiteV2 = 0;
         gInteractSuite = 0;
         gParametricParameterSuite = 0;
-#ifdef OFX_EXTENSIONS_NUKE
-        gCameraParameterSuite = 0;
-        gImageEffectPlaneSuiteV1 = 0;
-        gImageEffectPlaneSuiteV2 = 0;
-#endif
-#ifdef OFX_EXTENSIONS_VEGAS
-#if defined(WIN32) || defined(WIN64)
-        gHWNDInteractSuite  = 0;
-#endif // #if defined(WIN32) || defined(WIN64)
-        gVegasStereoscopicImageSuite  = 0;
-        gVegasKeyframeSuite  = 0;
-#endif
       }
 
       {
@@ -2956,19 +2123,6 @@ namespace OFX {
       // kOfxImageEffectPropRenderQualityDraft appeared in OFX 1.4
       args.renderQualityDraft = inArgs.propGetInt(kOfxImageEffectPropRenderQualityDraft, false) != 0;
 
-#ifdef OFX_EXTENSIONS_VEGAS
-      args.viewsToRender = inArgs.propGetInt(kOfxImageEffectPropViewsToRender, 0, false);
-      args.renderView = inArgs.propGetInt(kOfxImageEffectPropRenderView, 0, false);
-#endif
-        
-#ifdef OFX_EXTENSIONS_NUKE
-        args.renderView = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-        int numPlanes = inArgs.propGetDimension(kFnOfxImageEffectPropComponentsPresent, false);
-        for (int i = 0; i < numPlanes; ++i) {
-            args.planes.push_back(inArgs.propGetString(kFnOfxImageEffectPropComponentsPresent, i, false));
-        }
-#endif
-
       args.fieldToRender = eFieldNone;
       std::string str = inArgs.propGetString(kOfxImageEffectPropFieldToRender);
       try {
@@ -2980,21 +2134,6 @@ namespace OFX {
 
         // HACK need to throw something to cause a failure
       }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-      if (args.renderQualityDraft) { // OFX 1.4 property wins over Vegas extension
-        args.renderQuality = eVegasRenderQualityDraft;
-      } else {
-        args.renderQuality = eVegasRenderQualityBest;
-        std::string strQuality = inArgs.propGetString(kOfxImageEffectPropRenderQuality, /*throwOnFailure*/false);
-        try {
-          args.renderQuality = mapToVegasRenderQualityEnum(strQuality);
-        } catch (std::invalid_argument) {
-          // dud field?
-          OFX::Log::error(true, "Unknown render quality '%s'", str.c_str());
-        }
-      }
-#endif
     }
 
     /** @brief Library side render action, fetches relevant properties and calls the client code */
@@ -3043,10 +2182,6 @@ namespace OFX {
       // kOfxImageEffectPropRenderQualityDraft appeared in OFX 1.4
       args.renderQualityDraft = inArgs.propGetInt(kOfxImageEffectPropRenderQualityDraft, false) != 0;
 
-#ifdef OFX_EXTENSIONS_NUKE
-      args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-#endif
-
       // and call the plugin client render code
       effectInstance->beginSequenceRender(args);
     }
@@ -3077,10 +2212,6 @@ namespace OFX {
       // kOfxImageEffectPropRenderQualityDraft appeared in OFX 1.4
       args.renderQualityDraft = inArgs.propGetInt(kOfxImageEffectPropRenderQualityDraft, false) != 0;
 
-#ifdef OFX_EXTENSIONS_NUKE
-      args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-#endif
-        
       // and call the plugin client render code
       effectInstance->endSequenceRender(args);
     }
@@ -3100,10 +2231,6 @@ namespace OFX {
       args.renderWindow.x2 = inArgs.propGetInt(kOfxImageEffectPropRenderWindow, 2);
       args.renderWindow.y2 = inArgs.propGetInt(kOfxImageEffectPropRenderWindow, 3);
 
-#ifdef OFX_EXTENSIONS_NUKE
-      args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-#endif
-        
       std::string str = inArgs.propGetString(kOfxImageEffectPropFieldToRender);
       try {
         args.fieldToRender = mapStrToFieldEnum(str);
@@ -3153,10 +2280,6 @@ namespace OFX {
 
       args.time = inArgs.propGetDouble(kOfxPropTime);
 
-#ifdef OFX_EXTENSIONS_NUKE
-      args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-#endif
-        
       // and call the plugin client code
       OfxRectD rod;
       bool v = effectInstance->getRegionOfDefinition(args, rod);
@@ -3227,10 +2350,6 @@ namespace OFX {
       args.regionOfInterest.y2 = inArgs.propGetDouble(kOfxImageEffectPropRegionOfInterest, 3);
 
       args.time = inArgs.propGetDouble(kOfxPropTime);
-        
-#ifdef OFX_EXTENSIONS_NUKE
-      args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-#endif
 
       // make a roi setter object
       ActualROISetter setRoIs(outArgs, gEffectDescriptors[plugname][effectInstance->getContext()]->getClipROIPropNames());
@@ -3331,13 +2450,7 @@ namespace OFX {
       ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
 
       // we can only be a general context effect, so check that this is true
-#ifdef OFX_EXTENSIONS_TUTTLE
-      OFX::Log::error(effectInstance->getContext() != eContextGeneral &&
-                      effectInstance->getContext() != eContextReader &&
-                      effectInstance->getContext() != eContextGenerator, "Calling kOfxImageEffectActionGetTimeDomain on an effect that is not a 'general', 'reader' or 'generator' context effect.");
-#else
       OFX::Log::error(effectInstance->getContext() != eContextGeneral, "Calling kOfxImageEffectActionGetTimeDomain on an effect that is not a general context effect.");
-#endif
 
       OfxRangeD timeDomain;
 
@@ -3433,129 +2546,6 @@ namespace OFX {
       // and call the plugin client code
       effectInstance->endChanged(reason);
     }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief Library side uplift vegas keyframe action */
-    static
-    void
-      upliftVegasKeyframeAction(OfxImageEffectHandle handle, OFX::PropertySet inArgs)
-    {
-      ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
-
-      SonyVegasUpliftArguments upliftArgs(inArgs);
-
-      upliftArgs.keyframeCount = inArgs.propGetDimension(kOfxPropVegasUpliftKeyframeData);
-      upliftArgs.guidUplift = inArgs.propGetString(kOfxImageEffectPropVegasUpliftGUID);
-
-      upliftArgs.commonData = inArgs.propGetPointer(kOfxPropVegasUpliftData, false);
-      upliftArgs.commonDataSize = inArgs.propGetInt(kOfxPropVegasUpliftDataLength, false);
-
-      // and call the plugin client code
-      effectInstance->upliftVegasKeyframes(upliftArgs);
-    }
-
-    /** @brief Library side invoke About function */
-    static
-    bool
-      invokeAbout(OfxImageEffectHandle handle, const char* /*plugname*/)
-    {
-      // fetch our effect pointer 
-      ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
-
-      // and call the plug-in client code
-      return effectInstance->invokeAbout();
-    }
-
-    /** @brief Library side invoke Help function */
-    static
-    bool
-      invokeHelp(OfxImageEffectHandle handle, const char* /*plugname*/)
-    {
-      // fetch our effect pointer 
-      ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
-
-      // and call the plug-in client code
-      return effectInstance->invokeHelp();
-    }
-#endif
-#ifdef OFX_EXTENSIONS_NUKE
-
-    static
-    bool
-    getFrameViewsNeededAction(OfxImageEffectHandle handle, OFX::PropertySet inArgs, OFX::PropertySet &outArgs, const char* plugname)
-    {
-        ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
-        FrameViewsNeededArguments args;
-        args.time = inArgs.propGetDouble(kOfxPropTime);
-        args.view = inArgs.propGetInt(kFnOfxImageEffectPropView);
-        
-        ImageEffectDescriptor* desc = gEffectDescriptors[plugname][effectInstance->getContext()];
-        FrameViewsNeededSetter setter(outArgs,desc->getClipFrameViewsPropNames());
-        effectInstance->getFrameViewsNeeded(args,setter);
-        if (setter.setOutProperties()) {
-            return true;
-        }
-        return false;
-    }
-      
-    static
-    bool
-    getClipComponentsAction(OfxImageEffectHandle handle, OFX::PropertySet inArgs, OFX::PropertySet &outArgs, const char* plugname)
-    {
-          ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
-          ClipComponentsArguments args;
-          args.time = inArgs.propGetDouble(kOfxPropTime);
-          args.view = inArgs.propGetInt(kFnOfxImageEffectPropView);
-          
-          ImageEffectDescriptor* desc = gEffectDescriptors[plugname][effectInstance->getContext()];
-          ClipComponentsSetter setter(outArgs,desc->getClipPlanesPropNames());
-          effectInstance->getClipComponents(args,setter);
-          if (setter.setOutProperties()) {
-              return true;
-          }
-          return false;
-    }
-      
-    /** @brief Action called in place of a render to recover a transform matrix from an effect. */
-    static
-    bool
-      getTransform(OfxImageEffectHandle handle, OFX::PropertySet inArgs, OFX::PropertySet &outArgs)
-    {
-      ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
-      TransformArguments args;
-
-      // get the arguments 
-      args.time = inArgs.propGetDouble(kOfxPropTime);
-
-      args.renderScale.x = inArgs.propGetDouble(kOfxImageEffectPropRenderScale, 0);
-      args.renderScale.y = inArgs.propGetDouble(kOfxImageEffectPropRenderScale, 1);
-
-      args.renderView = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
-
-      std::string str = inArgs.propGetString(kOfxImageEffectPropFieldToRender);
-      try {
-        args.fieldToRender = eFieldBoth;
-        args.fieldToRender = mapStrToFieldEnum(str);
-      } catch (std::invalid_argument) {
-        // dud field?
-        OFX::Log::error(true, "Unknown field to render '%s'", str.c_str());
-
-        // HACK need to throw something to cause a failure
-      }
-
-      // and call the plugin client getTransform code
-      Clip *transformClip = 0;
-      double transformMatrix[9];
-      bool v = effectInstance->getTransform(args, transformClip, transformMatrix);
-
-      if(v && transformClip) {
-        outArgs.propSetString(kOfxPropName, transformClip->name());
-        outArgs.propSetDoubleN(kFnOfxPropMatrix2D, transformMatrix, 9);
-        return true; // the transfrom and clip name were set and can be used to modify the named image appropriately
-      }
-      return false; // don't attempt to use the transform matrix, but render the image as per normal
-    }
-#endif
 
     /** @brief The main entry point for the plugin
     */
@@ -3832,55 +2822,6 @@ namespace OFX {
 
           // call the dialog action (user_data is in the raw handle)
           instance->dialog(const_cast<void*>(handleRaw));
-        }
-#endif
-#ifdef OFX_EXTENSIONS_VEGAS
-        else if(action == kOfxImageEffectActionVegasKeyframeUplift) {
-          checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, false, true);
-
-          // call the uplift vegas keyframes function
-          upliftVegasKeyframeAction(handle, inArgs);
-        }
-        else if(action == kOfxImageEffectActionInvokeHelp) {
-          checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, true, true);
-
-          // call the invoke help function
-          if(invokeHelp(handle, plugname))
-            stat = kOfxStatOK;
-        }
-        else if(action == kOfxImageEffectActionInvokeAbout) {
-          checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, true, true);
-
-          // call the invoke help function
-          if(invokeAbout(handle, plugname))
-            stat = kOfxStatOK;
-        }
-#endif
-#ifdef OFX_EXTENSIONS_NUKE
-        else if(action == kFnOfxImageEffectActionGetClipComponents) {
-          checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, false, false);
-
-          // call the clip components function, return OK if it does something
-          // the spec is not clear as to whether it is allowed to do nothing but
-          // this action should always be implemented for multi-planes effects.
-          if (getClipComponentsAction(handle, inArgs, outArgs, plugname)) {
-              stat = kOfxStatOK;
-          }
-        }
-        else if(action == kFnOfxImageEffectActionGetFrameViewsNeeded) {
-          checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, false, false);
-
-          // call the frames views needed action, return OK if it does something
-          if (getFrameViewsNeededAction(handle, inArgs, outArgs, plugname)) {
-              stat = kOfxStatOK;
-          }
-        }
-        else if(action == kFnOfxImageEffectActionGetTransform) {
-          checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, false, false);
-
-          // call the get transform function
-          if(getTransform(handle, inArgs, outArgs))
-            stat = kOfxStatOK;
         }
 #endif
         else if(actionRaw) {

@@ -53,14 +53,6 @@ each represent the actions that can be carried out on those particular OFX objec
 #include <memory>
 #include "ofxsCore.h"
 
-#ifdef OFX_EXTENSIONS_NUKE
-#include "nuke/camera.h"
-#include "nuke/fnPublicOfxExtensions.h"
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include "ofxNatron.h"
-#endif
-
 /** @brief Nasty macro used to define empty protected copy ctors and assign ops */
 #define mDeclareProtectedAssignAndCC(CLASS) \
   CLASS &operator=(const CLASS &) {assert(false); return *this;}	\
@@ -133,9 +125,6 @@ namespace OFX {
                         ePageParam,
                         ePushButtonParam,
                         eParametricParam,
-#ifdef OFX_EXTENSIONS_NUKE
-                        eCameraParam,
-#endif
                         };
 
     /** @brief Enumerates the different types of cache invalidation */
@@ -179,10 +168,6 @@ namespace OFX {
         eDoubleTypeNormalisedXY, //!< normalised to the project's X and Y size (2D only), deprecated for 1.2
         eDoubleTypeNormalisedXYAbsolute, //!< normalised to the projects X and Y size, and is an absolute position on the image plane, deprecated for 1.2
 #endif
-#ifdef OFX_EXTENSIONS_VEGAS
-        eDoubleTypePolar,
-        eDoubleTypeChrominance 
-#endif
     };
 
     /** @brief Enumerates the differing types of coordinate system for default values */
@@ -191,48 +176,9 @@ namespace OFX {
         eCoordinatesNormalised, //!< normalized coordinate system
     };
 
-#ifdef OFX_EXTENSIONS_NUKE
-    enum ELayoutHint {
-      eLayoutHintNormal = kOfxParamPropLayoutHintNormal,
-      eLayoutHintDivider = kOfxParamPropLayoutHintDivider,
-      eLayoutHintNoNewLine = kOfxParamPropLayoutHintNoNewLine
-    };
-#endif
-
-#ifdef OFX_EXTENSIONS_VEGAS
-    /** @brief Enumerates the types of interpolation for vegas keyframes */
-    enum VegasInterpolationEnum {
-      eVegasInterpolationUnknown,
-      eVegasInterpolationLinear, 
-      eVegasInterpolationFast,   
-      eVegasInterpolationSlow,   
-      eVegasInterpolationSmooth, 
-      eVegasInterpolationSharp,  
-      eVegasInterpolationHold,   
-      eVegasInterpolationManual, 
-      eVegasInterpolationSplit
-      };
-
-    /** @brief Enumerates the types of color spaces vegas uses in color UI parameters */
-    enum ColorSpaceEnum {
-      eColorSpaceRGB,
-      eColorSpaceHSV,
-      eColorSpaceHSL,
-      eColorSpaceLab
-    };
-#endif
-
     /** @brief turns a ParamTypeEnum into the char * that raw OFX uses */
     const char *
     mapParamTypeEnumToString(ParamTypeEnum v);
-
-#ifdef OFX_EXTENSIONS_VEGAS
-    VegasInterpolationEnum 
-    mapToInterpolationEnum(const std::string &s) throw(std::invalid_argument);
-
-    const char* 
-    mapToInterpolationTypeEnum(OFX::VegasInterpolationEnum type);
-#endif
 
     ////////////////////////////////////////////////////////////////////////////////
     /** @brief Base class for all param descriptors */
@@ -281,11 +227,6 @@ namespace OFX {
         /** @brief set the secretness of the param, defaults to false */
         void setIsSecret(bool v);
 
-#ifdef OFX_EXTENSIONS_VEGAS
-        /** @brief set the default expanded of the param, defaults to false */
-        void setParameterExpanded(bool v);
-#endif
-
         /** @brief set the group param that is the parent of this one, default is to be ungrouped at the root level */
         void setParent(const GroupParamDescriptor &v);
 
@@ -295,17 +236,6 @@ namespace OFX {
         /** @brief whether the param is enabled, defaults to true */
         void setEnabled(bool v);
 
-#ifdef OFX_EXTENSIONS_NUKE
-        void setLayoutHint( const ELayoutHint layoutHint );
-#endif
-        
-#ifdef OFX_EXTENSIONS_NATRON
-        /** @brief When set to true, the parameter is specific to an effect instance of the plug-in and should have a
-         unique representation for each instance. See descripton of kNatronOfxImageEffectContextTracker for more details
-         on multiple instances and difference between shared and specific parameters.*/
-        void setInstanceSpecific(bool isSpecific);
-#endif
-        
         bool getHostHasNativeOverlayHandle() const;
         
         void setUseHostNativeOverlayHandle(bool use);
@@ -549,11 +479,6 @@ namespace OFX {
         /** @brief set the display min and max, default is to be the same as the range param */
         void setDisplayRange(double minX, double minY,
                             double maxX, double maxY);
-
-#ifdef OFX_EXTENSIONS_VEGAS
-        /** @brief set the color wheel level value, default is 0.75 */
-        void setColorWheelLevel(double x);
-#endif
     };
   
     ////////////////////////////////////////////////////////////////////////////////
@@ -616,10 +541,6 @@ namespace OFX {
         /** @brief set the display min and max, default is to be the same as the range param */
         void setDisplayRange(double minR, double minG, double minB,
                             double maxR, double maxG, double maxB);
-#ifdef OFX_EXTENSIONS_VEGAS
-        /** @brief set the default UI color space of the RGB param, defaults to eColorSpaceHSV */
-        void setDefaultColorSpace(ColorSpaceEnum v);
-#endif
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -652,10 +573,6 @@ namespace OFX {
         /** @brief set the display min and max, default is to be the same as the range param */
         void setDisplayRange(double minR, double minG, double minB, double minA,
                             double maxR, double maxG, double maxB, double maxA);
-#ifdef OFX_EXTENSIONS_VEGAS
-        /** @brief set the default UI color space of the RGB param, defaults to eColorSpaceHSV */
-        void setDefaultColorSpace(ColorSpaceEnum v);
-#endif
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -701,18 +618,6 @@ namespace OFX {
     
         /** @brief clear all the options so as to add some new ones in */
         void resetOptions(void);
-        
-#ifdef OFX_EXTENSIONS_NATRON
-        /** @brief whether the menu should be cascading, and each option contains a slash-separated path to the item, defaults to false. */
-        void setCascading(const bool v);
-
-        /** @brief Indicate whether the host can add a new choice on its own (probably via a GUI specific to this parameter).
-         The plugin may then retrieve the option name whenever a choice value is out of its initial range.
-
-         This property primarily targets image plane choices, where the host should be able to create a new plane and add it to the menu.
-         */
-        void setHostCanAddOptions(bool can);
-#endif
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -731,10 +636,6 @@ namespace OFX {
     public :
         /** @brief whether the initial state of a group is open or closed in a hierarchical layout, defaults to false */
         void setOpen(const bool v);
-
-#ifdef OFX_EXTENSIONS_NUKE
-        void setAsTab();
-#endif
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1086,14 +987,6 @@ namespace OFX {
 
         /** @brief copy parameter from another, including any animation etc... */
         void copyFrom(const ValueParam& from, OfxTime dstOffset, const OfxRangeD *frameRange);
-
-#ifdef OFX_EXTENSIONS_VEGAS
-        /** @brief gets the interpolation type of a key at the given time */
-        VegasInterpolationEnum getKeyInterpolation(double time);
-    
-        /** @brief sets the interpolation type of a key at the given time */
-        void setKeyInterpolation(double time, VegasInterpolationEnum interpolation);
-#endif
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1616,14 +1509,6 @@ namespace OFX {
         /** @brief clear all the options so as to add some new ones in */
         void resetOptions(void);
 
-#ifdef OFX_EXTENSIONS_NATRON
-        /** @brief whether the menu should be cascading, and each option contains a slash-separated path to the item, defaults to false. */
-        bool getIsCascading(void);
-
-        /** @brief Indicate whether the host can add a new choice on its own (probably via a GUI specific to this parameter). */
-        bool getHostCanAddOptions();
-#endif
-
         /** @brief get value */
         void getValue(int &v);
 
@@ -1809,29 +1694,6 @@ namespace OFX {
         void deleteControlPoint(const int curveIndex);
     };
 
-#ifdef OFX_EXTENSIONS_NUKE
-    ////////////////////////////////////////////////////////////////////////////////
-    /** @brief Wraps up a camera param */
-    class CameraParam : public Param {
-    private:
-        mDeclareProtectedAssignAndCCBase(CameraParam,Param);
-        CameraParam(void) {assert(false);}
-
-    protected:
-        /** @brief hidden constructor */
-        CameraParam(/*OfxImageEffectHandle imageEffectHandle, */const ParamSet* paramSet, const std::string& name, NukeOfxCameraHandle handle);
-
-        // so it can make one
-        friend class ParamSet;
-            
-    public:
-        Param* getParameter( const std::string& name );
-            
-    private:
-        //OfxImageEffectHandle _imageEffectHandle;
-    };
-#endif
-
     ////////////////////////////////////////////////////////////////////////////////
     /** @brief A set of parameters in a plugin instance */
     class ParamSet { 
@@ -1853,9 +1715,6 @@ namespace OFX {
 
         /** @brief calls the raw OFX routine to define a param */
         void fetchRawParam(const std::string &name, ParamTypeEnum paramType, OfxParamHandle &handle) const;
-#ifdef OFX_EXTENSIONS_NUKE
-        void fetchRawCameraParam(OfxImageEffectHandle pluginHandle, const std::string& name, NukeOfxCameraHandle& handle) const;
-#endif
 
         /** @brief Fetch a param of the given name and type */
         template <class T> void
@@ -1961,37 +1820,6 @@ namespace OFX {
         /** @brief Fetch a parametric param */
         ParametricParam* fetchParametricParam(const std::string &name) const;
     };
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief Fetch a camera param */
-    template<> inline void
-    ParamSet::fetchAttribute<CameraParam>(OfxImageEffectHandle pluginHandle, const std::string& name, CameraParam * &paramPtr) const
-    {
-        typedef CameraParam T;
-        const ParamTypeEnum paramType = eCameraParam;
-        paramPtr = NULL;
-
-        // have we made it already in this param set and is it an int?
-        if(Param * param  = findPreviouslyFetchedParam(name))
-        {
-            if(param->getType() == paramType)
-            {
-                paramPtr = (T*) param;
-            }
-        }
-        else
-        {
-            // ok define one and add it in
-            NukeOfxCameraHandle paramHandle;
-            fetchRawCameraParam(pluginHandle, name, paramHandle);
-
-            // make out support descriptor class
-            paramPtr = new T(/*pluginHandle, */this, name, paramHandle);
-            
-            // add it to our map of described ones
-            _fetchedParams[name] = paramPtr;
-        }
-    }
-#endif
 };
 
 // undeclare the protected assign and CC macro

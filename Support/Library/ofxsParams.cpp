@@ -39,9 +39,6 @@ England
 #include <cstring>
 #include "ofxsSupportPrivate.h"
 #include "ofxParametricParam.h"
-#ifdef OFX_EXTENSIONS_NUKE
-#include "nuke/camera.h"
-#endif
 
 /** @brief The core 'OFX Support' namespace, used by plugin implementations. All code for these are defined in the common support libraries. */
 namespace OFX {  
@@ -124,39 +121,6 @@ namespace OFX {
     return ePushButtonParam ;
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief map a std::string to a keyframe interpolation type */
-  VegasInterpolationEnum mapToInterpolationEnum(const std::string &s) throw(std::invalid_argument)
-  {
-    if(s == kOfxVegasKeyframeInterpolationUnknown) return eVegasInterpolationUnknown;
-    if(s == kOfxVegasKeyframeInterpolationLinear)  return eVegasInterpolationLinear;
-    if(s == kOfxVegasKeyframeInterpolationFast)    return eVegasInterpolationFast; 
-    if(s == kOfxVegasKeyframeInterpolationSlow)    return eVegasInterpolationSlow; 
-    if(s == kOfxVegasKeyframeInterpolationSmooth)  return eVegasInterpolationSmooth; 
-    if(s == kOfxVegasKeyframeInterpolationSharp)   return eVegasInterpolationSharp;  
-    if(s == kOfxVegasKeyframeInterpolationHold)    return eVegasInterpolationHold;  
-    if(s == kOfxVegasKeyframeInterpolationManual)  return eVegasInterpolationManual; 
-    if(s == kOfxVegasKeyframeInterpolationSplit)   return eVegasInterpolationSplit;
-    OFX::Log::error(true, "Unknown keyframe Interpolation '%s'", s.c_str());
-    throw std::invalid_argument(s);
-  }
-
-  const char* mapToInterpolationTypeEnum(OFX::VegasInterpolationEnum type)
-  {
-         if(type == OFX::eVegasInterpolationUnknown) return kOfxVegasKeyframeInterpolationUnknown;
-    else if(type == OFX::eVegasInterpolationLinear)  return kOfxVegasKeyframeInterpolationLinear; 
-    else if(type == OFX::eVegasInterpolationFast)    return kOfxVegasKeyframeInterpolationFast;   
-    else if(type == OFX::eVegasInterpolationSlow)    return kOfxVegasKeyframeInterpolationSlow;   
-    else if(type == OFX::eVegasInterpolationSmooth)  return kOfxVegasKeyframeInterpolationSmooth; 
-    else if(type == OFX::eVegasInterpolationSharp)   return kOfxVegasKeyframeInterpolationSharp;  
-    else if(type == OFX::eVegasInterpolationHold)    return kOfxVegasKeyframeInterpolationHold;   
-    else if(type == OFX::eVegasInterpolationManual)  return kOfxVegasKeyframeInterpolationManual; 
-    else if(type == OFX::eVegasInterpolationSplit)   return kOfxVegasKeyframeInterpolationSplit;  
-    OFX::Log::error(true, "Unknown interpolation type enum '%d'", type);
-    return 0;
-  }
-#endif
-
   ////////////////////////////////////////////////////////////////////////////////
   // the base class for all param descriptors
 
@@ -218,34 +182,6 @@ namespace OFX {
   {
     _paramProps.propSetInt(kOfxParamPropEnabled, v);
   }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief set if the parameter is expanded (Vegas specific), defaults to true */
-  void 
-    ParamDescriptor::setParameterExpanded(bool v)
-  {
-    _paramProps.propSetInt(kOfxParamPropParameterExpanded, v, false);
-  }
-#endif
-
-#ifdef OFX_EXTENSIONS_NUKE
-  void
-    ParamDescriptor::setLayoutHint(const ELayoutHint layoutHint)
-  {
-    _paramProps.propSetInt(kOfxParamPropLayoutHint, static_cast<int>(layoutHint), false);
-  }
-#endif
-    
-#ifdef OFX_EXTENSIONS_NATRON
-    /** @brief When set to true, the parameter is specific to an effect instance of the plug-in and should have a
-     unique representation for each instance. See descripton of kNatronOfxImageEffectContextTracker for more details
-     on multiple instances and difference between shared and specific parameters.*/
-  void
-    ParamDescriptor::setInstanceSpecific(bool isSpecific)
-  {
-    _paramProps.propSetInt(kNatronOfxParamPropIsInstanceSpecific, (int)isSpecific, false);
-  }
-#endif
 
   /** @brief set the group param that is the parent of this one, default is to be ungrouped at the root level */
   void 
@@ -533,14 +469,6 @@ namespace OFX {
       _paramProps.propSetString(kOfxParamPropDoubleType, kOfxParamDoubleTypeNormalisedXYAbsolute);
       break;
 #endif
-#ifdef OFX_EXTENSIONS_VEGAS
-    case eDoubleTypePolar :
-      _paramProps.propSetString(kOfxParamPropDoubleType, kOfxParamDoubleTypePolar);
-      break;
-    case eDoubleTypeChrominance :
-      _paramProps.propSetString(kOfxParamPropDoubleType, kOfxParamDoubleTypeChrominance);
-      break;
-#endif
     }
   }
 
@@ -657,14 +585,6 @@ namespace OFX {
     _paramProps.propSetInt(kOfxParamPropUseHostOverlayHandle, v);
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief set the color wheel level value, default is 0.75 */
-  void Double2DParamDescriptor::setColorWheelLevel(double x)
-  {
-    _paramProps.propSetDouble(kOfxParamPropColorWheelLevel, x, false);
-  }
-#endif
-
   ////////////////////////////////////////////////////////////////////////////////
   // 3D double param descriptor
 
@@ -766,28 +686,6 @@ namespace OFX {
     _paramProps.propSetString(kOfxParamPropDimensionLabel, b, 2);
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief set the default UI color space of the RGB param, defaults to eColorSpaceHSV */
-  void RGBParamDescriptor::setDefaultColorSpace(ColorSpaceEnum v)
-  {
-    switch(v) 
-    {
-    case eColorSpaceRGB :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceRGB, false);
-      break;
-    case eColorSpaceHSV :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceHSV, false);
-      break;
-    case eColorSpaceHSL :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceHSL, false);
-      break;
-    case eColorSpaceLab :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceLab, false);
-      break;
-    }
-  }
-#endif
-
   ////////////////////////////////////////////////////////////////////////////////
   // RGBA param descriptor
 
@@ -845,28 +743,6 @@ namespace OFX {
     _paramProps.propSetString(kOfxParamPropDimensionLabel, a, 3);
   }
 
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief set the default UI color space of the RGB param, defaults to eColorSpaceHSV */
-  void RGBAParamDescriptor::setDefaultColorSpace(ColorSpaceEnum v)
-  {
-    switch(v) 
-    {
-    case eColorSpaceRGB :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceRGB, false);
-      break;
-    case eColorSpaceHSV :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceHSV, false);
-      break;
-    case eColorSpaceHSL :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceHSL, false);
-      break;
-    case eColorSpaceLab :
-      _paramProps.propSetString(kOfxParamColorDefaultColorspace, kOfxParamColorColorspaceLab, false);
-      break;
-    }
-  }
-#endif
-
   ////////////////////////////////////////////////////////////////////////////////
   // bool param descriptor
 
@@ -910,15 +786,6 @@ namespace OFX {
     int nCurrentValues = _paramProps.propGetDimension(kOfxParamPropChoiceOption);
     _paramProps.propSetString(kOfxParamPropChoiceOption, v, nCurrentValues);
     if(!label.empty()) {
-#ifdef OFX_EXTENSIONS_TUTTLE
-      // Choice label is an ofx extension. If the host doesn't support it,
-      // we put this information into the parameter hint.
-      // from https://github.com/tuttleofx/TuttleOFX/commit/ae6e14e99f62b5efa89e4de4a3bc33129ac6afd0
-      if (_paramProps.propGetDimension(kOfxParamPropChoiceLabelOption, false) > 0) {
-        // this property is an optional extension.
-        _paramProps.propSetString(kOfxParamPropChoiceLabelOption, label, nCurrentValues);
-      } else
-#endif
       {
         // If the kOfxParamPropChoiceLabelOption doesn't exist, we put that information into the Hint.
         // It's better than nothing...
@@ -941,19 +808,6 @@ namespace OFX {
     _paramProps.propReset(kOfxParamPropChoiceOption);
   }
 
-#ifdef OFX_EXTENSIONS_NATRON
-  /** @brief whether the menu should be cascading, and each option contains a slash-separated path to the item, defaults to false. */
-  void ChoiceParamDescriptor::setCascading(const bool v)
-  {
-    _paramProps.propSetInt(kNatronOfxParamPropChoiceCascading, v, false);
-  }
-
-  /** @brief may the host add new options? */
-  void ChoiceParamDescriptor::setHostCanAddOptions(bool can)
-  {
-    _paramProps.propSetInt(kNatronOfxParamPropChoiceHostCanAddOptions, (int)can, 0,false);
-  }
-#endif
   ////////////////////////////////////////////////////////////////////////////////
   // string param descriptor
 
@@ -1035,13 +889,6 @@ namespace OFX {
   {
     _paramProps.propSetInt(kOfxParamPropGroupOpen, v, false); // introduced in OFX 1.2
   }
-
-#ifdef OFX_EXTENSIONS_NUKE
-  void GroupParamDescriptor::setAsTab()
-  {
-    _paramProps.propSetInt(kFnOfxParamPropGroupIsTab, 1, false); // Nuke extension
-  }
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   // page param descriptor
@@ -1613,26 +1460,6 @@ namespace OFX {
     OfxStatus stat = OFX::Private::gParamSuite->paramCopy(_paramHandle, from._paramHandle, dstOffset, frameRange);
     throwSuiteStatusException(stat);
   }
-
-#ifdef OFX_EXTENSIONS_VEGAS
-  /** @brief gets the interpolation type of a key at the given time */
-  VegasInterpolationEnum ValueParam::getKeyInterpolation(double time)
-  {
-    if(!OFX::Private::gVegasKeyframeSuite) throwHostMissingSuiteException("vegasKeyframeSuite");
-    char *cStr;
-    OfxStatus stat = OFX::Private::gVegasKeyframeSuite->paramGetKeyInterpolation(_paramHandle, time, &cStr);
-    throwSuiteStatusException(stat); 
-    return mapToInterpolationEnum(cStr);
-  }
-  
-  /** @brief sets the interpolation type of a key at the given time */
-  void ValueParam::setKeyInterpolation(double time, VegasInterpolationEnum interpolation)
-  {
-    if(!OFX::Private::gVegasKeyframeSuite) throwHostMissingSuiteException("vegasKeyframeSuite");
-    OfxStatus stat = OFX::Private::gVegasKeyframeSuite->paramSetKeyInterpolation(_paramHandle, time, mapToInterpolationTypeEnum(interpolation));
-    throwSuiteStatusException(stat); 
-  }
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   // Wraps up an integer param */
@@ -2626,15 +2453,6 @@ namespace OFX {
     int nCurrentValues = _paramProps.propGetDimension(kOfxParamPropChoiceOption);
     _paramProps.propSetString(kOfxParamPropChoiceOption, v, nCurrentValues);
     if(!label.empty()) {
-#ifdef OFX_EXTENSIONS_TUTTLE
-      // Choice label is an ofx extension. If the host doesn't support it,
-      // we put this information into the parameter hint.
-      // from https://github.com/tuttleofx/TuttleOFX/commit/ae6e14e99f62b5efa89e4de4a3bc33129ac6afd0
-      try {
-        // this property is an optional extension.
-         _paramProps.propSetString(kOfxParamPropChoiceLabelOption, label, nCurrentValues);
-      } catch(std::exception&)
-#endif
       {
         // If the kOfxParamPropChoiceLabelOption doesn't exist, we put that information into the Hint.
         // It's better than nothing...
@@ -2662,26 +2480,6 @@ namespace OFX {
   {
     _paramProps.propReset(kOfxParamPropChoiceOption);
   }
-
-#ifdef OFX_EXTENSIONS_NATRON
-    /** @brief whether the menu should be cascading, and each option contains a slash-separated path to the item, defaults to false. */
-    bool ChoiceParam::getIsCascading()
-    {
-        bool v = _paramProps.propGetInt(kNatronOfxParamPropChoiceCascading, false) != 0;
-        return v;
-    }
-
-    /** @brief Indicate whether the host can add a new choice on its own (probably via a GUI specific to this parameter).
-     The plugin may then retrieve the option name whenever a choice value is out of its initial range.
-
-     This property primarily targets image plane choices, where the host should be able to create a new plane and add it to the menu.
-     */
-    bool ChoiceParam::getHostCanAddOptions()
-    {
-        bool v = _paramProps.propGetInt(kNatronOfxParamPropChoiceHostCanAddOptions, false) != 0;
-        return v;
-    }
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   // Wraps up a custom param */
@@ -2947,28 +2745,6 @@ namespace OFX {
     throwSuiteStatusException(stat);
   }
 
-#ifdef OFX_EXTENSIONS_NUKE
-  ////////////////////////////////////////////////////////////////////////////////
-  // Wraps up a camera param
-
-  /** @brief hidden constructor */
-  CameraParam::CameraParam(/*OfxImageEffectHandle imageEffectHandle, */const ParamSet* paramSet, const std::string &name, NukeOfxCameraHandle handle)
-      : Param(paramSet, name, eCameraParam, (OfxParamHandle)handle)
-      //, _imageEffectHandle(imageEffectHandle)
-  {
-    // fetch all parameters
-    // NukeOfxCameraHandle *camera;
-    // OfxPropertySetHandle *propertySet;
-    // OfxStatus stat = OFX::Private::gCameraParameterSuite->cameraGetHandle(_paramHandle, name.c_str(), camera, propertySet);
-    // throwSuiteStatusException(stat);
-  }
-
-  Param* CameraParam::getParameter(const std::string &/*name*/)
-  {
-    return this;
-  }
-#endif
-
   ////////////////////////////////////////////////////////////////////////////////
   //  for a set of parameters
   /** @brief hidden ctor */
@@ -3025,18 +2801,6 @@ namespace OFX {
       throw OFX::Exception::TypeRequest("Parameter exists but is of the wrong type");
     }
   }
-
-#ifdef OFX_EXTENSIONS_NUKE
-  /** @brief calls the raw OFX routine to fetch a camera param */
-  void ParamSet::fetchRawCameraParam(OfxImageEffectHandle pluginHandle, const std::string& name, NukeOfxCameraHandle& handle) const
-  {
-    OfxPropertySetHandle propHandle;
-
-    OfxStatus stat = OFX::Private::gCameraParameterSuite->cameraGetHandle(pluginHandle, name.c_str(), &handle, &propHandle);
-
-    throwSuiteStatusException( stat );
-  }
-#endif
 
   ParamTypeEnum ParamSet::getParamType(const std::string& name) const
   {
@@ -3170,16 +2934,6 @@ namespace OFX {
         fetchParam(name, t, ptr);
         return ptr;
       }
-#ifdef OFX_EXTENSIONS_NUKE
-    case eCameraParam:
-      {
-        // You can't fetch a camera parameter from here...
-        throwSuiteStatusException(kOfxStatErrFatal);
-        //CameraParam* ptr = 0;
-        //fetchParam(name, t, ptr);
-        //return ptr;
-      }
-#endif
     default:
       assert(false);
     }

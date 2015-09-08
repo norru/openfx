@@ -359,9 +359,6 @@ namespace OFX {
       PropertyDescription(kOfxImageEffectPluginPropFieldRenderTwiceAlways, OFX::eInt, 1, eDescDefault, 1, eDescFinished),
       PropertyDescription(kOfxImageEffectPropSupportsMultipleClipDepths,   OFX::eInt, 1, eDescDefault, 0, eDescFinished),
       PropertyDescription(kOfxImageEffectPropSupportsMultipleClipPARs,     OFX::eInt, 1, eDescDefault, 0, eDescFinished),
-#ifdef OFX_EXTENSIONS_TUTTLE
-      //PropertyDescription(kTuttleOfxImageEffectPropEvaluation,             OFX::eDouble, 1, eDescDefault, -1., eDescFinished),
-#endif
 
       // Pointer props with defaults that can be checked against
       PropertyDescription(kOfxImageEffectPluginPropOverlayInteractV1,      OFX::ePointer, 1, eDescDefault, (void *)(0), eDescFinished),
@@ -937,19 +934,6 @@ namespace OFX {
       PropertyDescription(kOfxParamPropParametricRange,              OFX::eDouble,  2, eDescDefault, 0.0, 1.0, eDescFinished),
     };
 
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief properties for a camera param */
-    static PropertyDescription gCameraParamProps[ ] =
-    {
-      PropertyDescription(kOfxPropType,                           OFX::eString, 1, eDescDefault, "NukeCamera", eDescFinished),
-      PropertyDescription(kOfxPropName,                           OFX::eString, 1, eDescFinished),
-      PropertyDescription(kOfxPropLabel,                          OFX::eString, 1,  eDescFinished),
-      PropertyDescription(kOfxPropShortLabel,                     OFX::eString, 1,  eDescFinished),
-      PropertyDescription(kOfxPropLongLabel,                      OFX::eString, 1, eDescFinished),
-      PropertyDescription(kOfxImageClipPropOptional,              OFX::eInt, 1, eDescDefault, 0, eDescFinished),
-    };
-#endif
-
     /** @brief Property set for 1D ints */
     static PropertySetDescription gInt1DParamPropSet("1D Integer parameter",
       mPropDescriptionArg(gBasicParamProps),
@@ -1076,11 +1060,6 @@ namespace OFX {
       mPropDescriptionArg(gParametricParamProps),
       NULLPTR);
 
-#ifdef OFX_EXTENSIONS_NUKE
-    static PropertySetDescription gCameraParamPropSet("Camera Parameter",
-      mPropDescriptionArg(gCameraParamProps),
-      NULLPTR);
-#endif
 #endif
     /** @brief Validates the host structure and property handle */
     void
@@ -1289,11 +1268,6 @@ namespace OFX {
       case eParametricParam:
         gParametricParamPropSet.validate(paramProps, checkDefaults);
         break;
-#ifdef OFX_EXTENSIONS_NUKE
-      case eCameraParam:
-        gCameraParamPropSet.validate(paramProps, checkDefaults);
-        break;
-#endif
       case eDummyParam:
       //default:
             break;
