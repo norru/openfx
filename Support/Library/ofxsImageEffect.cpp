@@ -586,7 +586,6 @@ namespace OFX {
       _effectProps.propSetPointer(kOfxImageEffectPluginPropOverlayInteractV1, (void*)desc->getMainEntry());
   }
 
-
   /** @brief Add a pixel depth to those supported */
   void ImageEffectDescriptor::addSupportedBitDepth(BitDepthEnum v)
   {
@@ -1982,7 +1981,6 @@ namespace OFX {
         // fetch the interact suite if the host supports interaction
         if(OFX::gHostDescription.supportsOverlays || OFX::gHostDescription.supportsCustomInteract)
           gInteractSuite  = (OfxInteractSuiteV1 *)    fetchSuite(kOfxInteractSuite, 1);
-
       }
 
       // initialise the validation code
@@ -2350,7 +2348,7 @@ namespace OFX {
       args.regionOfInterest.y2 = inArgs.propGetDouble(kOfxImageEffectPropRegionOfInterest, 3);
 
       args.time = inArgs.propGetDouble(kOfxPropTime);
-
+        
       // make a roi setter object
       ActualROISetter setRoIs(outArgs, gEffectDescriptors[plugname][effectInstance->getContext()]->getClipROIPropNames());
 
@@ -2546,6 +2544,7 @@ namespace OFX {
       // and call the plugin client code
       effectInstance->endChanged(reason);
     }
+
 
     /** @brief The main entry point for the plugin
     */

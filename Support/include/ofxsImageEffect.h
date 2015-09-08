@@ -473,7 +473,7 @@ namespace OFX {
     void addOpenGLBitDepth(BitDepthEnum bitDepth);
 #endif
 
-    /** @brief Create a clip, only callable from describe in context
+    /** @brief Create a clip, only callable from describe in context 
 
     The returned clip \em must not be deleted by the client code. This is all managed by the ImageEffectDescriptor itself.
     */
@@ -490,7 +490,6 @@ namespace OFX {
 
     /** @brief override this to create an interact for the effect */
     virtual void setOverlayInteractDescriptor(EffectOverlayDescriptor* desc);
-
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -562,7 +561,6 @@ namespace OFX {
 
     /** @brief the unique ID of this image */
     const std::string& getUniqueIdentifier(void) const { return _uniqueID;}
-
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -859,7 +857,7 @@ namespace OFX {
     /** @brief function to set the frames needed on a clip, the range is min <= time <= max */
     virtual void setFramesNeeded(const Clip &clip, const OfxRangeD &range) = 0;
   };
-
+    
   /** @brief Class used to set the clip preferences of the effect.
   */ 
   class ClipPreferencesSetter {

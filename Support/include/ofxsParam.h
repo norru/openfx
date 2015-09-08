@@ -1499,7 +1499,7 @@ namespace OFX {
 
         /** @brief append an option, default is to have not there */
         void appendOption(const std::string &v, const std::string& label = "");
-
+    
         /** @brief set an option */
         void setOption(int item, const std::string &str);
     
