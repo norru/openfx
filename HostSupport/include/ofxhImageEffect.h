@@ -436,6 +436,7 @@ namespace OFX {
 
         virtual OfxStatus clearPersistentMessage() = 0;  
 
+
         /// call the effect entry point
         virtual OfxStatus mainEntry(const char *action, 
                                     const void *handle, 
@@ -625,7 +626,7 @@ namespace OFX {
                                                     OfxPointD   renderScale,
                                                     const OfxRectD &roi,
                                                     std::map<ClipInstance *, OfxRectD> &rois);
-          
+
         // get frames needed to render the given frame
         virtual OfxStatus getFrameNeededAction(OfxTime time, 
                                                RangeMap &rangeMap);
@@ -700,7 +701,6 @@ namespace OFX {
         /// find the most chromatic components out of the two. Override this if you define
         /// more chromatic components
         virtual const std::string &findMostChromaticComponents(const std::string &a, const std::string &b) const;
-          
       };
 
       ////////////////////////////////////////////////////////////////////////////////

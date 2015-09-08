@@ -248,6 +248,7 @@ namespace OFX {
         return _properties.findStringPropValueIndex(kOfxImageEffectPropClipPreferencesSlaveParam, s) != -1;
       }
 
+
       ////////////////////////////////////////////////////////////////////////////////
       // descriptor
 
@@ -1281,6 +1282,7 @@ namespace OFX {
   
         return stat;
       }
+
 
       ////////////////////////////////////////////////////////////////////////////////
       /// see how many frames are needed from each clip to render the indicated frame

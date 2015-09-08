@@ -448,7 +448,7 @@ namespace OFX {
         /// is it there
         if(isSupportedComponent(s))
           return s;
-
+          
         /// were we fed some custom non chromatic component by getUnmappedComponents? Return it.
         /// we should never be here mind, so a bit weird
         if(!_effectInstance->isChromaticComponent(s))
