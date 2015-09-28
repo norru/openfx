@@ -62,12 +62,6 @@ LOCAL=/usr/local
 # add to PATH
 PATH="$MACPORTS/bin:$HOMEBREW/bin:$LOCAL/bin:$PATH"
 
-if ! port help > /dev/null 2>&1; then
-	echo "Please make sure that MacPorts is installed in /opt/local"
-	exit 1
-fi
-
-
 package="$1"
 binary="$package/Contents/MacOS/$2"
 libdir="Libraries"
@@ -145,7 +139,9 @@ done
 ## We use @rpath instead of @executable_path/../$libdir because it's shorter
 ## than /opt/local, so it always works. The downside is that the XCode project
 ## has to link the binary with "Runtime search paths" set correctly
-## (e.g. to "@loader_path/../Frameworks @loader_path/../Libraries" ).
+## (e.g. to "@loader_path/../Frameworks @loader_path/../Libraries" ),
+## or the binary has to be linked with the following flags:
+## -Wl,-rpath,@loader_path/../Frameworks -Wl,-rpath,@loader_path/../Libraries
 if [ -n "$alllibs" ]; then
     changes=""
     for l in $alllibs; do

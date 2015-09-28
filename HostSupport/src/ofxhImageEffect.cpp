@@ -90,9 +90,11 @@ namespace OFX {
         { kOfxImageEffectPropSupportsMultipleClipPARs,   Property::eInt, 1, false, "0" },
         { kOfxImageEffectPropClipPreferencesSlaveParam, Property::eString, 0, false, "" },
         { kOfxImageEffectInstancePropSequentialRender, Property::eInt, 1, false, "0" },
+        { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, false, "0" },
         { kOfxPluginPropFilePath, Property::eString, 1, true, ""},
 #ifdef OFX_SUPPORTS_OPENGLRENDER
         { kOfxImageEffectPropOpenGLRenderSupported, Property::eString, 1, false, "false"}, // OFX 1.3
+        { kOfxOpenGLPropPixelDepth, Property::eString,  0, false, "" }, 
 #endif
         Property::propSpecEnd
       };
@@ -223,6 +225,15 @@ namespace OFX {
         return _properties.findStringPropValueIndex(kOfxImageEffectPropSupportedPixelDepths, s) != -1;
       }
 
+#ifdef OFX_SUPPORTS_OPENGLRENDER
+      /// is the given RGBA/A OpenGL pixel depth supported by the effect
+      bool Base::isOpenGLPixelDepthSupported(const std::string &s) const
+      {
+        // if property is empty, all depths are supported
+        return _properties.getDimension(kOfxOpenGLPropPixelDepth) == 0 || _properties.findStringPropValueIndex(kOfxOpenGLPropPixelDepth, s) != -1;
+      }
+#endif
+
       /// when field rendering, does the effect need to be called
       /// twice to render a frame in all Base::circumstances (with different fields)
       bool Base::fieldRenderTwiceAlways() const
@@ -246,6 +257,24 @@ namespace OFX {
       bool Base::isClipPreferencesSlaveParam(const std::string &s) const
       {
         return _properties.findStringPropValueIndex(kOfxImageEffectPropClipPreferencesSlaveParam, s) != -1;
+      }
+
+      /// does the effect require sequential render
+      bool Base::requiresSequentialRender() const
+      {
+        return _properties.getIntProperty(kOfxImageEffectInstancePropSequentialRender) == 1;
+      }
+        
+      /// does the effect prefer sequential render
+      bool Base::prefersSequentialRender() const
+      {
+        return _properties.getIntProperty(kOfxImageEffectInstancePropSequentialRender) != 0;
+      }
+        
+      /// does the effect support render quality
+      bool Base::supportsRenderQuality() const
+      {
+        return _properties.getIntProperty(kOfxImageEffectPropRenderQualityDraft) != 0;
       }
 
 
@@ -1633,7 +1662,7 @@ namespace OFX {
         double projectPAR = getProjectPixelAspectRatio();
         bool multipleClipsPAR = supportsMultipleClipPARs();
         /// get the PAR of inputs, if it has different PARs and the effect does not support multiple clips PAR, throw an exception
-        double inputPar;
+        double inputPar = 1.;
         bool inputParSet = false;
         for (std::map<std::string, ClipInstance*>::iterator it2 = _clips.begin(); it2 != _clips.end(); ++it2) {
           if (!it2->second->isOutput() && it2->second->getConnected()) {
@@ -1928,8 +1957,14 @@ namespace OFX {
       static OfxStatus getPropertySet(OfxImageEffectHandle h1, 
                                       OfxPropertySetHandle *h2)
       {        
+#       ifdef OFX_DEBUG_PROPERTIES
+        std::cout << "OFX: getPropertySet - " << h1 << " = ...";
+#       endif
         try {
         if (!h2) {
+#         ifdef OFX_DEBUG_PROPERTIES
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
 
@@ -1938,15 +1973,24 @@ namespace OFX {
         if (!effectBase || !effectBase->verifyMagic()) {
           *h2 = NULL;
 
+#         ifdef OFX_DEBUG_PROPERTIES
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
 
         *h2 = effectBase->getProps().getHandle();
 
+#       ifdef OFX_DEBUG_PROPERTIES
+        std::cout << *h2 << ' ' << StatStr(kOfxStatOK) << std::endl;
+#       endif
         return kOfxStatOK;
         } catch (...) {
           *h2 = NULL;
 
+#         ifdef OFX_DEBUG_PROPERTIES
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
       }
@@ -1954,6 +1998,9 @@ namespace OFX {
       static OfxStatus getParamSet(OfxImageEffectHandle h1, 
                                    OfxParamSetHandle *h2)
       {
+#       ifdef OFX_DEBUG_PARAMETERS
+        std::cout << "OFX: getParamSet - " << h1 << " = ...";
+#       endif
         try {
         if (!h2) {
           return kOfxStatErrBadHandle;
@@ -1964,6 +2011,9 @@ namespace OFX {
         if (!effectBase || !effectBase->verifyMagic()) {
           *h2 = NULL;
 
+#         ifdef OFX_DEBUG_PARAMETERS
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
 
@@ -1972,6 +2022,9 @@ namespace OFX {
         if(effectDescriptor) {
           *h2 = effectDescriptor->getParamSetHandle();
 
+#         ifdef OFX_DEBUG_PARAMETERS
+          std::cout << *h2 << ' ' << StatStr(kOfxStatOK) << std::endl;
+#         endif
           return kOfxStatOK;
         }
 
@@ -1980,15 +2033,24 @@ namespace OFX {
         if(effectInstance) {
           *h2 = effectInstance->getParamSetHandle();
 
+#         ifdef OFX_DEBUG_PARAMETERS
+          std::cout << *h2 << ' ' << StatStr(kOfxStatOK) << std::endl;
+#         endif
           return kOfxStatOK;
         }
 
         *h2 = NULL;
 
+#       ifdef OFX_DEBUG_PARAMETERS
+        std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#       endif
         return kOfxStatErrBadHandle;
         } catch (...) {
           *h2 = NULL;
 
+#         ifdef OFX_DEBUG_PARAMETERS
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
       }
@@ -2031,6 +2093,9 @@ namespace OFX {
       
       static OfxStatus clipGetPropertySet(OfxImageClipHandle clip,
                                           OfxPropertySetHandle *propHandle){        
+#       ifdef OFX_DEBUG_PROPERTIES
+        std::cout << "OFX: clipGetPropertySet - " << clip << " = ...";
+#       endif
         try {
         if (!propHandle) {
           return kOfxStatErrBadHandle;
@@ -2041,14 +2106,23 @@ namespace OFX {
         if (!clipInstance || !clipInstance->verifyMagic()) {
           *propHandle = NULL;
 
+#         ifdef OFX_DEBUG_PROPERTIES
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
 
         *propHandle = clipInstance->getPropHandle();
+#       ifdef OFX_DEBUG_PROPERTIES
+        std::cout << *propHandle << ' ' << StatStr(kOfxStatOK) << std::endl;
+#       endif
         return kOfxStatOK;
         } catch (...) {
           *propHandle = NULL;
 
+#         ifdef OFX_DEBUG_PROPERTIES
+          std::cout << ' ' << StatStr(kOfxStatErrBadHandle) << std::endl;
+#         endif
           return kOfxStatErrBadHandle;
         }
       }

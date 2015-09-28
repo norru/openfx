@@ -666,6 +666,12 @@ namespace OFX {
     _effectProps.propSetInt(kOfxImageEffectPropSupportsTiles, int(v));
   }
 
+  /** @brief Does the plugin handles render quality */
+  void ImageEffectDescriptor::setSupportsRenderQuality(bool v)
+  {
+    _effectProps.propSetInt(kOfxImageEffectPropRenderQualityDraft, int(v), false); // OFX 1.4+
+  }
+
   /** @brief Does the plugin perform temporal clip access */
   void ImageEffectDescriptor::setTemporalClipAccess(bool v)
   {
@@ -706,6 +712,21 @@ namespace OFX {
       break;
     }
   }
+    
+#ifdef OFX_EXTENSIONS_NATRON
+    /*Indicates if the host may add a mask that will be handled automatically.*/
+  void ImageEffectDescriptor::setHostMaskingEnabled(bool enabled)
+  {
+    _effectProps.propSetInt(kNatronOfxImageEffectPropHostMasking, (int)enabled, 0, false);
+  }
+    
+    /*Indicates if the host may add a "Mix" double parameter that will dissolve
+     between the source image at 0 and the full effect at 1.*/
+  void ImageEffectDescriptor::setHostMixingEnabled(bool enabled)
+  {
+    _effectProps.propSetInt(kNatronOfxImageEffectPropHostMixing, (int)enabled, 0, false);
+  }
+#endif
 
 #ifdef OFX_SUPPORTS_OPENGLRENDER
   /** @brief Does the plugin support OpenGL accelerated rendering (but is also capable of CPU rendering) ? */
@@ -1340,6 +1361,7 @@ namespace OFX {
     }
   }
 #endif
+    
 
   /** @brief notify host that the internal data structures need syncing back to parameters for persistance and so on.  This is reset by the host after calling SyncPrivateData. */
   void ImageEffect::setParamSetNeedsSyncing()

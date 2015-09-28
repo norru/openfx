@@ -37,6 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ofxProperty.h"
 #include "ofxMultiThread.h"
 #include "ofxMemory.h"
+#ifdef OFX_SUPPORTS_OPENGLRENDER
+#include "ofxOpenGLRender.h"
+#endif
 
 #include "ofxhHost.h"
 
