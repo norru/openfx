@@ -4320,6 +4320,7 @@ namespace OFX {
     return suite;
   }
 
+#ifndef OFXS_MANUAL_REGISTRATION
   ////////////////////////////////////////////////////////////////////////////////
   /** @brief The OFX::Plugin namespace. All the functions in here needs to be defined by each plugin that uses the support libs.
    */
@@ -4335,7 +4336,7 @@ namespace OFX {
       // an empty definition is enough to prevent old code from compiling.
     }
   };
-
+#endif // OFXS_MANUAL_REGISTRATION
 }; // namespace OFX
 
 static
@@ -4362,6 +4363,11 @@ void init()
   if(gHasInit)
     return;
 
+#ifdef OFXS_MANUAL_REGISTRATION
+  // Call OFX::Plugin::getPluginIDs if the plugin uses manual plugin registration.
+  // Note that manual registration was obsoleted by automatic registratic using mRegisterPluginFactoryInstance().
+  OFX::Plugin::getPluginIDs(OFX::PluginFactories::plugIDs);
+#endif // OFXS_MANUAL_REGISTRATION
   const OFX::PluginFactoryArray& plugIDs = OFX::PluginFactories::plugIDs;
   if(OFX::ofxPlugs.empty())
     OFX::ofxPlugs.resize(plugIDs.size());
