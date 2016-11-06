@@ -13,8 +13,8 @@ endif()
 target_include_directories(OfxSupport PUBLIC ${OFX_HEADER_DIR} ${OFX_SUPPORT_HEADER_DIR})
 
 # Install OfxSupport headers and library
-install(
-    FILES ${OFX_SUPPORT_HEADER_FILES}
-    DESTINATION "include"
-)
-install(TARGETS OfxSupport DESTINATION "lib" OPTIONAL)
+#install(
+#    FILES ${OFX_SUPPORT_HEADER_FILES}
+#    DESTINATION "include"
+#)
+#install(TARGETS OfxSupport DESTINATION "lib" OPTIONAL)

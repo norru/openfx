@@ -27,21 +27,15 @@ endfunction(get_ofx_architecture)
 
 
 # Create a new OFX plugin
-# Arguments: PLUGIN_NAME
-# Optional Arguments: PLUGIN_SRC
-function(create_ofx_plugin PLUGIN_NAME)
-    if(ARGV1)
-        set(PLUGIN_SRC ${ARGV1})
-    else()
-        set(PLUGIN_SRC ${PLUGIN_NAME})
-    endif()
+function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCES PLUGIN_INCLUDES PLUGIN_EXTRA_SOURCES)
     GET_PROPERTY(OPENFX_PROJECT_SOURCE_DIR GLOBAL PROPERTY OPENFX_PROJECT_SOURCE_DIR)
     set(OFX_SUPPORT_HEADER_DIR "${OPENFX_PROJECT_SOURCE_DIR}/Support/include")
 
     file(GLOB_RECURSE PLUGIN_SOURCES "${PLUGIN_SRC}/*.cpp")
+    include_directories(${PLUGIN_INCLUDES})
 
     # Plugin target is a shared library
-    add_library(${PLUGIN_NAME} MODULE ${PLUGIN_SOURCES})
+    add_library(${PLUGIN_NAME} MODULE ${PLUGIN_SOURCES} ${PLUGIN_EXTRA_SOURCES})
 
     # Link with OfxSupport library
     target_link_libraries(${PLUGIN_NAME} OfxSupport)
@@ -53,7 +47,7 @@ function(create_ofx_plugin PLUGIN_NAME)
     if(NOT OPENGL_FOUND)
         message(STATUS "Plugin ${PLUGIN_NAME}: OpenGL not found. Please set OPENGL_LIBRARIES.")
     endif()
-    target_link_libraries(${PLUGIN_NAME} ${OPENGL_LIBRARIES})
+    target_link_libraries(${PLUGIN_NAME} ${OPENGL_LIBRARIES} ${PLUGIN_LDFLAGS})
 
     # Add extra flags to the link step of the plugin
     if(APPLE)
@@ -72,6 +66,14 @@ function(create_ofx_plugin PLUGIN_NAME)
             DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/${PLUGIN_NAME}.ofx.bundle/Contents/${OFX_ARCH}"
             COMPONENT OfxPlugins
             OPTIONAL)
+    if (EXISTS "${PROJECT_SOURCE_DIR}/${PLUGIN_SRC}/Info.plist")
+        install(FILES "${PROJECT_SOURCE_DIR}/${PLUGIN_SRC}/Info.plist"
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/${PLUGIN_NAME}.ofx.bundle/Contents")
+    endif()
+    if (PLUGIN_RESOURCES)
+        install(FILES ${PLUGIN_RESOURCES}
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/${PLUGIN_NAME}.ofx.bundle/Contents/Resources")
+    endif()
 
 endfunction(create_ofx_plugin)
 

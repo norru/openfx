@@ -32,10 +32,10 @@ set(OFX_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 file(GLOB_RECURSE OFX_HEADER_FILES "${OFX_HEADER_DIR}/*.h")
 
 # Install OFX C headers
-install(
-    FILES ${OFX_HEADER_FILES}
-    DESTINATION "include"
-)
+#install(
+#    FILES ${OFX_HEADER_FILES}
+#    DESTINATION "include"
+#)
 
 # Build OFX C++ wrapper
 add_subdirectory(Support)
