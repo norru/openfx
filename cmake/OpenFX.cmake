@@ -31,7 +31,11 @@ function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCE
     GET_PROPERTY(OPENFX_PROJECT_SOURCE_DIR GLOBAL PROPERTY OPENFX_PROJECT_SOURCE_DIR)
     set(OFX_SUPPORT_HEADER_DIR "${OPENFX_PROJECT_SOURCE_DIR}/Support/include")
 
-    file(GLOB_RECURSE PLUGIN_SOURCES "${PLUGIN_SRC}/*.cpp")
+    foreach(SOURCE_DIR ${PLUGIN_SRC})
+        file(GLOB_RECURSE PLUGIN_GET_SOURCES "${SOURCE_DIR}/*.cpp")
+        set(PLUGIN_SOURCES "${PLUGIN_SOURCES};${PLUGIN_GET_SOURCES}")
+    endforeach(SOURCE_DIR)
+
     include_directories(${PLUGIN_INCLUDES})
 
     # Plugin target is a shared library
@@ -76,4 +80,3 @@ function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCE
     endif()
 
 endfunction(create_ofx_plugin)
-
