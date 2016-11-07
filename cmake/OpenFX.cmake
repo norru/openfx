@@ -67,16 +67,16 @@ function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCE
     # Install OFX plugin
     get_ofx_architecture(OFX_ARCH)
     install(TARGETS ${PLUGIN_NAME}
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/${PLUGIN_NAME}.ofx.bundle/Contents/${OFX_ARCH}"
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/Plugins/${PLUGIN_NAME}.ofx.bundle/Contents/${OFX_ARCH}"
             COMPONENT OfxPlugins
             OPTIONAL)
     if (EXISTS "${PROJECT_SOURCE_DIR}/${PLUGIN_SRC}/Info.plist")
         install(FILES "${PROJECT_SOURCE_DIR}/${PLUGIN_SRC}/Info.plist"
-                DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/${PLUGIN_NAME}.ofx.bundle/Contents")
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/Plugins/${PLUGIN_NAME}.ofx.bundle/Contents")
     endif()
     if (PLUGIN_RESOURCES)
         install(FILES ${PLUGIN_RESOURCES}
-                DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/${PLUGIN_NAME}.ofx.bundle/Contents/Resources")
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/Plugins/${PLUGIN_NAME}.ofx.bundle/Contents/Resources")
     endif()
 
 endfunction(create_ofx_plugin)
