@@ -7,9 +7,18 @@ set(OFX_SUPPORT_LIBRARY_FILES "${OFX_SUPPORT_LIBRARY_DIR}/ofxsMultiThread.cpp;${
 
 # Create OfxSupport static lib
 add_library(OfxSupport STATIC ${OFX_HEADER_FILES} ${OFX_SUPPORT_HEADER_FILES} ${OFX_SUPPORT_LIBRARY_FILES})
+
+if(NOT BITS)
+        if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+            set(BITS "64")
+        else()
+            set(BITS "32")
+        endif()
+endif()
+
 set_target_properties(OfxSupport PROPERTIES LINKER_LANGUAGE CXX)
 if(NOT MSVC)
-	set_target_properties(OfxSupport PROPERTIES COMPILE_FLAGS "-fPIC")
+	set_target_properties(OfxSupport PROPERTIES COMPILE_FLAGS "-fPIC -m${BITS}" LINK_FLAGS "-m${BITS}")
 endif()
 target_include_directories(OfxSupport PUBLIC ${OFX_HEADER_DIR} ${OFX_SUPPORT_HEADER_DIR})
 
