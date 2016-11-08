@@ -89,4 +89,9 @@ function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCE
         install(FILES ${PLUGIN_RESOURCES}
                 DESTINATION "${CMAKE_INSTALL_PREFIX}/OFX/Plugins/${PLUGIN_NAME}.ofx.bundle/Contents/Resources")
     endif()
+    if (APPLE)
+        if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+            install(CODE "execute_process(COMMAND \"${OFX_SUPPORT_HEADER_DIR}/osxDeploy.sh ${CMAKE_INSTALL_PREFIX}/OFX/Plugins/${PLUGIN_NAME}.ofx.bundle ${PLUGIN_NAME}.ofx\")")
+        endif()
+    endif()
 endfunction(create_ofx_plugin)
