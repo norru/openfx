@@ -17,8 +17,8 @@ if(NOT BITS)
 endif()
 
 set_target_properties(OfxSupport PROPERTIES LINKER_LANGUAGE CXX)
-if(NOT MSVC)
-	set_target_properties(OfxSupport PROPERTIES COMPILE_FLAGS "-fPIC -m${BITS}" LINK_FLAGS "-m${BITS}")
+if(NOT MSVC AND NOT APPLE)
+    set_target_properties(OfxSupport PROPERTIES COMPILE_FLAGS "-fPIC -m${BITS}" LINK_FLAGS "-m${BITS}")
 endif()
 target_include_directories(OfxSupport PUBLIC ${OFX_HEADER_DIR} ${OFX_SUPPORT_HEADER_DIR})
 

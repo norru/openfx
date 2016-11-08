@@ -48,7 +48,9 @@ function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCE
 
     # Plugin target is a shared library
     add_library(${PLUGIN_NAME} MODULE ${PLUGIN_SOURCES} ${PLUGIN_EXTRA_SOURCES})
-    set_target_properties(${PLUGIN_NAME} PROPERTIES COMPILE_FLAGS "-m${BITS}" LINK_FLAGS "-m${BITS}")
+    if(NOT APPLE)
+        set_target_properties(${PLUGIN_NAME} PROPERTIES COMPILE_FLAGS "-m${BITS}" LINK_FLAGS "-m${BITS}")
+    endif()
 
     # Link with OfxSupport library
     target_link_libraries(${PLUGIN_NAME} OfxSupport)
