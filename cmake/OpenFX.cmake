@@ -1,14 +1,5 @@
 # Get architecture as defined by the OFX standard
 function(get_ofx_architecture OFX_ARCH)
-    # Arch
-    if(NOT BITS)
-        if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-            set(BITS "64")
-        else()
-            set(BITS "32")
-        endif()
-    endif()
-
     # Windows
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         set(OFX_ARCH "Win32" PARENT_SCOPE)
@@ -45,6 +36,14 @@ function(create_ofx_plugin PLUGIN_NAME PLUGIN_SRC PLUGIN_LDFLAGS PLUGIN_RESOURCE
 
     include_directories(${PLUGIN_INCLUDES})
 
+    # Arch
+    if(NOT BITS)
+        if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+            set(BITS "64")
+        else()
+            set(BITS "32")
+        endif()
+    endif()
     get_ofx_architecture(OFX_ARCH)
 
     # Plugin target is a shared library
