@@ -2024,7 +2024,7 @@ namespace OFX {
 #endif
     {
 #if defined(OFX_EXTENSIONS_VEGAS) && defined(OFX_EXTENSIONS_NUKE)
-      throwHostMissingSuiteException(kFnOfxImageEffectPlaneSuite"V2 & "kOfxVegasStereoscopicImageEffectSuite);
+      throwHostMissingSuiteException(kFnOfxImageEffectPlaneSuite"V2 & " kOfxVegasStereoscopicImageEffectSuite);
 #else
 #ifdef OFX_EXTENSIONS_VEGAS
       throwHostMissingSuiteException(kOfxVegasStereoscopicImageEffectSuite);
