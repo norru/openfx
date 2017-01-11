@@ -3219,6 +3219,7 @@ namespace OFX {
         gHostDescription.supportsDynamicChoices     = hostProps.propGetInt(kNatronOfxParamHostPropSupportsDynamicChoices, false) != 0;
         gHostDescription.supportsCascadingChoices   = hostProps.propGetInt(kNatronOfxParamPropChoiceCascading, false) != 0;
         gHostDescription.supportsChannelSelector    = hostProps.propGetString(kNatronOfxImageEffectPropChannelSelector, false) == kOfxImageComponentRGBA;
+        gHostDescription.canDistort                 = hostProps.propGetInt(kOfxImageEffectPropCanDistort, false) != 0;
 
         int nOverlayHandles = hostProps.propGetDimension(kNatronOfxPropNativeOverlays, false);
         for (int i = 0; i < nOverlayHandles; ++i) {

@@ -487,6 +487,7 @@ namespace OFX {
     bool supportsDynamicChoices;
     bool supportsCascadingChoices;
     bool supportsChannelSelector;
+    bool canDistort;
 
     struct NativeOverlayHandle
     {
