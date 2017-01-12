@@ -1888,7 +1888,7 @@ namespace OFX {
 #ifdef OFX_EXTENSIONS_NUKE
           inArgs.setIntProperty(kFnOfxImageEffectPropView, view);
 #endif
-            
+
           Property::Set outArgs;
           for(std::map<std::string, ClipInstance*>::iterator it=_clips.begin();
               it!=_clips.end();
@@ -1912,6 +1912,17 @@ namespace OFX {
               outArgs.setDoublePropertyN(s.name, &roi.x1, 4);
             }
           }
+#ifdef OFX_EXTENSIONS_NATRON
+          {
+            Property::PropSpec s;
+            s.name = kNatronOfxImageEffectPropRenderCost;
+            s.type = Property::eDouble;
+            s.dimension = 1;
+            s.readonly = false;
+            s.defaultValue = "0";
+            outArgs.createProperty(s);
+          }
+#endif
 
 #         ifdef OFX_DEBUG_ACTIONS
             OfxPlugin *ofxp = _plugin->getPluginHandle()->getOfxPlugin();

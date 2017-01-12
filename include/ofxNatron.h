@@ -75,6 +75,22 @@ Valid values:
  */
 #define kOfxParamPropChoiceOptionName "kOfxParamPropChoiceOptionName"
 
+
+
+/** @brief The cost estimated by the plug-in to render the rectangle (kOfxImageEffectPropRegionOfInterest) passed in the inArgs of the
+ kOfxImageEffectActionGetRegionsOfInterest action.
+
+ For a plug-in that supports tiles, this allows the host to determine if it should prefer splitting the render window into tiles
+ or rendering a single rectangle (which may be bigger than each individual tiles).
+
+ - Type - double X 1
+ - Property Set - a read/write argument property to the outArgs of the ::kOfxImageEffectActionGetRegionsOfInterest action
+ 
+  The value returned has no special unit and is only used to be compared to another value returned by the same action
+  on the same plug-in with a different kOfxImageEffectPropRegionOfInterest rectangle.
+ */
+#define kNatronOfxImageEffectPropRenderCost "NatronOfxImageEffectPropRenderCost"
+
 /*
   ----------------------------------------------- -----------------------------------------------------------------
  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

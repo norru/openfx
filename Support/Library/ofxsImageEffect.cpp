@@ -3739,6 +3739,13 @@ namespace OFX {
           // and record the face we have done something
           doneSomething_ = true;
         }
+
+#ifdef OFX_EXTENSIONS_NATRON
+        virtual void setEstimatedCost(double cost)
+        {
+          outArgs_.propSetDouble(kNatronOfxImageEffectPropRenderCost, cost, 0, false);
+        }
+#endif
       }; // end of local class
 
       // fetch our effect pointer 

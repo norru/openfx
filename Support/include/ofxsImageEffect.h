@@ -1379,6 +1379,13 @@ namespace OFX {
 
     /** @brief function to set the RoI of a clip, pass in the clip to set the RoI of, and the RoI itself */
     virtual void setRegionOfInterest(const Clip &clip, const OfxRectD &RoI) = 0;
+
+#ifdef OFX_EXTENSIONS_NATRON
+    /** @brief set the esimated cost to render the rectangle passed in the inArgs of the getRegionsOfInterest action.
+     The unit has no special meaning, this is only used by the host to compare the results of the getRegionsOfInterest action
+     called once different rectangles for the same plug-in*/
+    virtual void setEstimatedCost(double cost) = 0;
+#endif
   };
 
   /** @brief POD struct to pass arguments into @ref OFX::ImageEffect::getFramesNeeded */
