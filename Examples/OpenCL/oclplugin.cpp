@@ -31,31 +31,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
    Direct GPU processing using OpenGL
  */
-#include <cstdio>
-#include <cstring>
-#include <cstdarg>
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
 #ifdef __APPLE__
-#include <OpenGL/gl.h>
+#include <OpenCL/cl.h>
 #else
-#include <GL/gl.h>
+#include <CL/cl.h>
 #endif
-#include <stdexcept>
-#include <new>
+#include <map>
 
 #include "ofxImageEffect.h"
 #include "ofxMemory.h"
 #include "ofxMultiThread.h"
-#include "ofxOpenGLRender.h"
 
-#include "../include/ofxUtilities.H" // example support utils
-
-#if defined __APPLE__ || defined linux || defined __FreeBSD__
-#  define EXPORT __attribute__((visibility("default")))
-#elif defined _WIN32
-#  define EXPORT OfxExport
-#else
-#  error Not building on your operating system quite yet
-#endif
+#include "ofxUtilities.H" // example support utils
 
 // pointers64 to various bits of the host
 OfxHost               *gHost;
@@ -66,13 +56,11 @@ OfxMemorySuiteV1      *gMemoryHost = 0;
 OfxMultiThreadSuiteV1 *gThreadHost = 0;
 OfxMessageSuiteV1     *gMessageSuite = 0;
 OfxInteractSuiteV1    *gInteractHost = 0;
-OfxImageEffectOpenGLRenderSuiteV1 *gOpenGLSuite = 0;
 
 // some flags about the host's behaviour
 int gHostSupportsMultipleBitDepths = false;
-int gHostSupportsOpenGL = false;
+int gHostSupportsOpenCL = false;
 
-/*
 #define CHECK_STATUS(args) check_status_fun args
 
 static void
@@ -83,7 +71,6 @@ check_status_fun(int status, int expected, const char *name)
 	    name, expected, status);
   }
 }
-*/
 
 #define DPRINT(args) print_dbg args
 void print_dbg(const char *fmt, ...)
@@ -110,8 +97,9 @@ struct MyInstanceData {
   OfxImageClipHandle outputClip;
 
   // handles to our parameters
-  OfxParamHandle scaleParam;
-  OfxParamHandle sourceScaleParam;
+  OfxParamHandle rGainParam;
+  OfxParamHandle gGainParam;
+  OfxParamHandle bGainParam;
 };
 
 /* mandatory function to set up the host structures */
@@ -167,12 +155,13 @@ createInstance( OfxImageEffectHandle effect)
   myData->isGeneralEffect = context && (strcmp(context, kOfxImageEffectContextGeneral) == 0);
 
   // cache away our param handles
-  gParamHost->paramGetHandle(paramSet, "scale", &myData->scaleParam, 0);
-  gParamHost->paramGetHandle(paramSet, "source_scale", &myData->sourceScaleParam, 0);
+  gParamHost->paramGetHandle(paramSet, "R Gain", &myData->rGainParam, 0);
+  gParamHost->paramGetHandle(paramSet, "G Gain", &myData->gGainParam, 0);
+  gParamHost->paramGetHandle(paramSet, "B Gain", &myData->bGainParam, 0);
 
   // cache away our clip handles
-  gEffectHost->clipGetHandle(effect, kOfxImageEffectSimpleSourceClipName, &myData->sourceClip, 0);
-  gEffectHost->clipGetHandle(effect, kOfxImageEffectOutputClipName, &myData->outputClip, 0);
+  gEffectHost->clipGetHandle(effect, "Source", &myData->sourceClip, 0);
+  gEffectHost->clipGetHandle(effect, "Output", &myData->outputClip, 0);
 
   // set my private instance data
   gPropHost->propSetPointer(effectProps, kOfxPropInstanceData, 0, (void *) myData);
@@ -226,7 +215,6 @@ getSpatialRoI( OfxImageEffectHandle  effect,  OfxPropertySetHandle inArgs,  OfxP
 
   // retrieve any instance data associated with this effect
   MyInstanceData *myData = getMyInstanceData(effect);
-  (void)myData;
 
   return kOfxStatOK;
 }
@@ -235,7 +223,7 @@ getSpatialRoI( OfxImageEffectHandle  effect,  OfxPropertySetHandle inArgs,  OfxP
 // This is actually redundant as this is the default behaviour, but for illustrative
 // purposes.
 OfxStatus
-getTemporalDomain( OfxImageEffectHandle  effect,  OfxPropertySetHandle /*inArgs*/,  OfxPropertySetHandle outArgs)
+getTemporalDomain( OfxImageEffectHandle  effect,  OfxPropertySetHandle inArgs,  OfxPropertySetHandle outArgs)
 {
   MyInstanceData *myData = getMyInstanceData(effect);
 
@@ -254,7 +242,7 @@ getTemporalDomain( OfxImageEffectHandle  effect,  OfxPropertySetHandle /*inArgs*
 
 // Set our clip preferences
 static OfxStatus
-getClipPreferences( OfxImageEffectHandle  effect,  OfxPropertySetHandle /*inArgs*/,  OfxPropertySetHandle outArgs)
+getClipPreferences( OfxImageEffectHandle  effect,  OfxPropertySetHandle inArgs,  OfxPropertySetHandle outArgs)
 {
   // retrieve any instance data associated with this effect
   MyInstanceData *myData = getMyInstanceData(effect);
@@ -278,9 +266,9 @@ getClipPreferences( OfxImageEffectHandle  effect,  OfxPropertySetHandle /*inArgs
 
 // are the settings of the effect performing an identity operation
 static OfxStatus
-isIdentity( OfxImageEffectHandle  /*effect*/,
-	    OfxPropertySetHandle /*inArgs*/,
-	    OfxPropertySetHandle /*outArgs*/)
+isIdentity( OfxImageEffectHandle  effect,
+	    OfxPropertySetHandle inArgs,
+	    OfxPropertySetHandle outArgs)
 {
   // In this case do the default, which in this case is to render
   return kOfxStatReplyDefault;
@@ -289,9 +277,9 @@ isIdentity( OfxImageEffectHandle  /*effect*/,
 ////////////////////////////////////////////////////////////////////////////////
 // function called when the instance has been changed by anything
 static OfxStatus
-instanceChanged( OfxImageEffectHandle  /*effect*/,
-		 OfxPropertySetHandle /*inArgs*/,
-		 OfxPropertySetHandle /*outArgs*/)
+instanceChanged( OfxImageEffectHandle  effect,
+		 OfxPropertySetHandle inArgs,
+		 OfxPropertySetHandle outArgs)
 {
   // don't trap any others
   return kOfxStatReplyDefault;
@@ -300,23 +288,116 @@ instanceChanged( OfxImageEffectHandle  /*effect*/,
 ////////////////////////////////////////////////////////////////////////////////
 // rendering routines
 
-// Is image handle a GPU texture?
-/*
-static bool image_is_texture(OfxPropertySetHandle image)
+const char *KernelSource = "\n" \
+"__kernel void gain(                                                    \n" \
+"   int width,                                                          \n" \
+"   int height,                                                         \n" \
+"   float rGain,                                                        \n" \
+"   float gGain,                                                        \n" \
+"   float bGain,                                                        \n" \
+"   __global float* input,                                              \n" \
+"   __global float* output)                                             \n" \
+"{                                                                      \n" \
+"   int x = get_global_id(0);                                           \n" \
+"   int y = get_global_id(1);                                           \n" \
+"   if ((x < width) && (y < height))                                    \n" \
+"   {                                                                   \n" \
+"       int index = (y * width + x) * 4;                                \n" \
+"       output[index + 0] = input[index + 0] * rGain;                   \n" \
+"       output[index + 1] = input[index + 1] * gGain;                   \n" \
+"       output[index + 2] = input[index + 2] * bGain;                   \n" \
+"       output[index + 3] = input[index + 3];                           \n" \
+"   }                                                                   \n" \
+"}                                                                      \n" \
+"\n";
+
+static void CheckError(cl_int p_Error, const char* p_Msg)
 {
-  int tmp;
-  return (gOpenGLSuite != NULL) &&
-    (gPropHost->propGetInt(image, kOfxImageEffectPropOpenGLTextureIndex, 0, &tmp) == kOfxStatOK);
+    if (p_Error != CL_SUCCESS)
+    {
+        DPRINT(("%s [%d]\n", p_Msg, p_Error));
+    }
 }
-*/
 
-// Render to texture: see http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
+static cl_kernel CreateKernel(cl_context p_Context)
+{
+    cl_int error;
 
+    cl_program program = clCreateProgramWithSource(p_Context, 1, (const char **)&KernelSource, NULL, &error);
+    CheckError(error, "Unable to create program");
+
+    error = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+    CheckError(error, "Unable to build program");
+
+    cl_kernel kernel = clCreateKernel(program, "gain", &error);
+    CheckError(error, "Unable to create kernel");
+
+    return kernel;
+}
+
+static cl_context GetContext(cl_device_id& p_DeviceId)
+{
+    static cl_context clContext = NULL;
+
+    if (clContext == NULL)
+    {
+        clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &p_DeviceId, NULL);
+        clContext = clCreateContext(NULL, 1, &p_DeviceId, NULL, NULL, NULL);
+    }
+    else
+    {
+        clGetContextInfo(clContext, CL_CONTEXT_DEVICES, sizeof(cl_device_id), &p_DeviceId, NULL);
+    }
+
+    return clContext;
+}
+
+static cl_kernel GetKernel(cl_context p_Context)
+{
+    static std::map<cl_context, cl_kernel> contextKernelMap;
+
+    cl_kernel kernel;
+
+    std::map<cl_context, cl_kernel>::iterator iter = contextKernelMap.find(p_Context);
+    if (iter == contextKernelMap.end())
+    {
+        kernel = CreateKernel(p_Context);
+        contextKernelMap[p_Context] = kernel;
+    }
+    else
+    {
+        kernel = iter->second;
+    }
+
+    return kernel;
+}
+
+static void RunKernel(cl_command_queue p_CmdQ, cl_device_id p_DeviceId, cl_kernel p_Kernel, int p_Width, int p_Height,
+                      float p_RGain, float p_GGain, float p_BGain, cl_mem p_Input, cl_mem p_Output)
+{
+    cl_int error;
+    error = clSetKernelArg(p_Kernel, 0, sizeof(int), &p_Width);
+    error |= clSetKernelArg(p_Kernel, 1, sizeof(int), &p_Height);
+    error |= clSetKernelArg(p_Kernel, 2, sizeof(float), &p_RGain);
+    error |= clSetKernelArg(p_Kernel, 3, sizeof(float), &p_GGain);
+    error |= clSetKernelArg(p_Kernel, 4, sizeof(float), &p_BGain);
+    error |= clSetKernelArg(p_Kernel, 5, sizeof(cl_mem), &p_Input);
+    error |= clSetKernelArg(p_Kernel, 6, sizeof(cl_mem), &p_Output);
+    CheckError(error, "Unable to set kernel arguments");
+
+    size_t localWorkSize[2], globalWorkSize[2];
+    clGetKernelWorkGroupInfo(p_Kernel, p_DeviceId, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), localWorkSize, NULL);
+    localWorkSize[1] = 1;
+    globalWorkSize[0] = ((p_Width + localWorkSize[0] - 1) / localWorkSize[0]) * localWorkSize[0];
+    globalWorkSize[1] = p_Height;
+
+    clEnqueueNDRangeKernel(p_CmdQ, p_Kernel, 2, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+}
 
 // the process code  that the host sees
 static OfxStatus render( OfxImageEffectHandle  instance,
                          OfxPropertySetHandle inArgs,
-                         OfxPropertySetHandle /*outArgs*/)
+                         OfxPropertySetHandle outArgs)
 {
   // get the render window and the time from the inArgs
   OfxTime time;
@@ -331,145 +412,104 @@ static OfxStatus render( OfxImageEffectHandle  instance,
 
   // property handles and members of each image
   OfxPropertySetHandle sourceImg = NULL, outputImg = NULL;
-  int gl_enabled = 0;
-  int source_texture_index = -1, source_texture_target = -1;
-  int output_texture_index = -1, output_texture_target = -1;
-  const char *tmps = NULL;
+  int srcRowBytes, srcBitDepth, dstRowBytes, dstBitDepth;
+  bool srcIsAlpha, dstIsAlpha;
+  OfxRectI dstRect, srcRect;
+  void *src, *dst;
 
-  DPRINT(("render: openGLSuite %s\n", gOpenGLSuite ? "found" : "not found"));
-  if (gOpenGLSuite) {
-    gPropHost->propGetInt(inArgs, kOfxImageEffectPropOpenGLEnabled, 0, &gl_enabled);
-    DPRINT(("render: openGL rendering %s\n", gl_enabled ? "enabled" : "DISABLED"));
-  }
   DPRINT(("Render: window = [%d, %d - %d, %d]\n",
 	  renderWindow.x1, renderWindow.y1,
 	  renderWindow.x2, renderWindow.y2));
 
-  // For this test, we only process in OpenGL mode.
-  if (!gl_enabled) {
-    return kOfxStatErrImageFormat;
+  int isOpenCLEnabled = 0;
+  if (gHostSupportsOpenCL)
+  {
+      gPropHost->propGetInt(inArgs, kOfxImageEffectPropOpenCLEnabled, 0, &isOpenCLEnabled);
+      DPRINT(("render: OpenCL rendering %s\n", isOpenCLEnabled ? "enabled" : "DISABLED"));
   }
 
-  // get the output image texture
-  status = gOpenGLSuite->clipLoadTexture(myData->outputClip, time, NULL, NULL, &outputImg);
-  DPRINT(("openGL: clipLoadTexture (output) returns status %d\n", status));
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  status = gPropHost->propGetInt(outputImg, kOfxImageEffectPropOpenGLTextureIndex,
-				 0, &output_texture_index);
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  status = gPropHost->propGetInt(outputImg, kOfxImageEffectPropOpenGLTextureTarget,
-				 0, &output_texture_target);
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  status = gPropHost->propGetString(outputImg, kOfxImageEffectPropPixelDepth, 0, &tmps);
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  DPRINT(("openGL: output texture index %d, target %d, depth %s\n",
-	  output_texture_index, output_texture_target, tmps));
+  cl_context clContext = NULL;
+  cl_command_queue cmdQ = NULL;
+  cl_device_id deviceId = NULL;
+  if (isOpenCLEnabled)
+  {
+      void* voidPtrCmdQ;
+      gPropHost->propGetPointer(inArgs, kOfxImageEffectPropOpenCLCommandQueue, 0, &voidPtrCmdQ);
+      cmdQ = reinterpret_cast<cl_command_queue>(voidPtrCmdQ);
 
-  status = gOpenGLSuite->clipLoadTexture(myData->sourceClip, time, NULL, NULL, &sourceImg);
-  DPRINT(("openGL: clipLoadTexture (source) returns status %d\n", status));
-  if (status != kOfxStatOK) {
-    return status;
+      clGetCommandQueueInfo(cmdQ, CL_QUEUE_CONTEXT, sizeof(cl_context), &clContext, NULL);
+      clGetCommandQueueInfo(cmdQ, CL_QUEUE_DEVICE, sizeof(cl_device_id), &deviceId, NULL);
+  }
+  else
+  {
+      clContext = GetContext(deviceId);
+      cmdQ = clCreateCommandQueue(clContext, deviceId, 0, NULL);
   }
 
-  status = gPropHost->propGetInt(sourceImg, kOfxImageEffectPropOpenGLTextureIndex,
-				 0, &source_texture_index);
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  status = gPropHost->propGetInt(sourceImg, kOfxImageEffectPropOpenGLTextureTarget,
-				 0, &source_texture_target);
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  status = gPropHost->propGetString(sourceImg, kOfxImageEffectPropPixelDepth, 0, &tmps);
-  if (status != kOfxStatOK) {
-    return status;
-  }
-  DPRINT(("openGL: source texture index %d, target %d, depth %s\n",
-	  source_texture_index, source_texture_target, tmps));
-  // XXX: check status for errors
+  char deviceName[128];
+  clGetDeviceInfo(deviceId, CL_DEVICE_NAME, 128, deviceName, NULL);
+  DPRINT(("Using %s for plugin\n", deviceName));
+
+  cl_kernel kernel = GetKernel(clContext);
+
+  // get the source image
+  sourceImg = ofxuGetImage(myData->sourceClip, time, srcRowBytes, srcBitDepth, srcIsAlpha, srcRect, src);
+
+  // get the output image
+  outputImg = ofxuGetImage(myData->outputClip, time, dstRowBytes, dstBitDepth, dstIsAlpha, dstRect, dst);
 
   // get the scale parameter
-  double scale = 1;
-  double source_scale = 1;
-  gParamHost->paramGetValueAtTime(myData->scaleParam, time, &scale);
-  gParamHost->paramGetValueAtTime(myData->sourceScaleParam, time, &source_scale);
+  double rGain = 1, gGain = 1, bGain = 1;
+  gParamHost->paramGetValueAtTime(myData->rGainParam, time, &rGain);
+  gParamHost->paramGetValueAtTime(myData->gGainParam, time, &gGain);
+  gParamHost->paramGetValueAtTime(myData->bGainParam, time, &bGain);
+  DPRINT(("Gain(%f %f %f)\n", rGain, gGain, bGain));
 
   float w = (renderWindow.x2 - renderWindow.x1);
   float h = (renderWindow.y2 - renderWindow.y1);
 
-  glPushAttrib(GL_ALL_ATTRIB_BITS);
-  glDisable(GL_BLEND);
+  const size_t rowSize = w * 4 * sizeof(float);
 
-  // Draw black into dest to start
-  glBegin(GL_QUADS);
-  glColor4f(0, 0, 0, 1); //Set the colour to opaque black
-  glVertex2f(0, 0);
-  glVertex2f(0, h);
-  glVertex2f(w, h);
-  glVertex2f(w, 0);
-  glEnd();
+  if (isOpenCLEnabled)
+  {
+      DPRINT(("Using OpenCL transfers (same device)\n"));
 
-  //
-  // Copy source texture to output by drawing a big textured quad
-  //
+      RunKernel(cmdQ, deviceId, kernel, w, h, rGain, gGain, bGain, (cl_mem)src, (cl_mem)dst);
+  }
+  else
+  {
+      DPRINT(("Using CPU transfers\n"));
 
-  // set up texture (how much of this is needed?)
-  glEnable(source_texture_target);
-  glBindTexture(source_texture_target, source_texture_index);
-  glTexParameteri(source_texture_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(source_texture_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(source_texture_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(source_texture_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+      const size_t bufferSize = w * h * 4 * sizeof(float);
 
-  // textures are oriented with Y up (standard orientation)
-  float tymin = 0;
-  float tymax = 1;
+      // Allocate the temporary buffers on the plugin device
+      cl_mem inBuffer = clCreateBuffer(clContext, CL_MEM_READ_ONLY, bufferSize, NULL, NULL);
+      cl_mem outBuffer = clCreateBuffer(clContext, CL_MEM_WRITE_ONLY, bufferSize, NULL, NULL);
 
-  // now draw the textured quad containing the source
-  glBegin(GL_QUADS);
-  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-  glBegin (GL_QUADS);
-  glTexCoord2f (0, tymin);
-  glVertex2f   (0, 0);
-  glTexCoord2f (1.0, tymin);
-  glVertex2f   (w * source_scale, 0);
-  glTexCoord2f (1.0, tymax);
-  glVertex2f   (w * source_scale, h * source_scale);
-  glTexCoord2f (0, tymax);
-  glVertex2f   (0, h * source_scale);
-  glEnd ();
+      // Copy the buffer from the CPU to the plugin device
+      clEnqueueWriteBuffer(cmdQ, inBuffer, CL_TRUE, 0, bufferSize, src, 0, NULL, NULL);
 
-  glDisable(source_texture_target);
+      RunKernel(cmdQ, deviceId, kernel, w, h, rGain, gGain, bGain, inBuffer, outBuffer);
 
-  // Now draw some stuff on top of it to show we really did something
-#define WIDTH 200
-#define HEIGHT 100
-  glBegin(GL_QUADS);
-  glColor3f(1.0f, 0, 0); //Set the colour to red
-  glVertex2f(10, 10);
-  glVertex2f(10, HEIGHT * scale);
-  glVertex2f(WIDTH * scale, HEIGHT * scale);
-  glVertex2f(WIDTH * scale, 10);
-  glEnd();
+      // Copy the buffer from the plugin device to the CPU
+      clEnqueueReadBuffer(cmdQ, outBuffer, CL_TRUE, 0, bufferSize, dst, 0, NULL, NULL);
 
-  // done; clean up.
-  glPopAttrib();
+      clFinish(cmdQ);
 
-  // release the data pointers
-  if(sourceImg)
-    gOpenGLSuite->clipFreeTexture(sourceImg);
-  if(outputImg)
-    gOpenGLSuite->clipFreeTexture(outputImg);
+      // Free the temporary buffers on the plugin device
+      clReleaseMemObject(inBuffer);
+      clReleaseMemObject(outBuffer);
+  }
+
+  if (sourceImg)
+  {
+      gEffectHost->clipReleaseImage(sourceImg);
+  }
+
+  if (outputImg)
+  {
+      gEffectHost->clipReleaseImage(outputImg);
+  }
 
   return status;
 }
@@ -483,15 +523,16 @@ defineParam( OfxParamSetHandle effectParams,
 	     const char *hint,
 	     const char *parent)
 {
+  OfxParamHandle param;
   OfxPropertySetHandle props;
   gParamHost->paramDefine(effectParams, kOfxParamTypeDouble, name, &props);
 
   // say we are a scaling parameter
   gPropHost->propSetString(props, kOfxParamPropDoubleType, 0, kOfxParamDoubleTypeScale);
   gPropHost->propSetDouble(props, kOfxParamPropDefault, 0, 1.0);
-  gPropHost->propSetDouble(props, kOfxParamPropMin, 0, 0.0);
-  gPropHost->propSetDouble(props, kOfxParamPropDisplayMin, 0, 0.0);
-  //gPropHost->propSetDouble(props, kOfxParamPropDisplayMax, 0, 100.0);
+  gPropHost->propSetDouble(props, kOfxParamPropMin, 0, 0.01);
+  gPropHost->propSetDouble(props, kOfxParamPropDisplayMin, 0, 0.01);
+  gPropHost->propSetDouble(props, kOfxParamPropDisplayMax, 0, 2.0);
   gPropHost->propSetDouble(props, kOfxParamPropIncrement, 0, 0.01);
   gPropHost->propSetString(props, kOfxParamPropHint, 0, hint);
   gPropHost->propSetString(props, kOfxParamPropScriptName, 0, scriptName);
@@ -505,20 +546,20 @@ static OfxStatus
 describeInContext( OfxImageEffectHandle  effect,  OfxPropertySetHandle inArgs)
 {
   // get the context from the inArgs handle
-  const char *context = NULL;
+  const char *context;
   gPropHost->propGetString(inArgs, kOfxImageEffectPropContext, 0, &context);
-  //bool isGeneralContext = strcmp(context, kOfxImageEffectContextGeneral) == 0;
+  bool isGeneralContext = strcmp(context, kOfxImageEffectContextGeneral) == 0;
 
   OfxPropertySetHandle props;
   // define the single output clip in both contexts
-  gEffectHost->clipDefine(effect, kOfxImageEffectOutputClipName, &props);
+  gEffectHost->clipDefine(effect, "Output", &props);
 
   // set the component types we can handle on out output
   gPropHost->propSetString(props, kOfxImageEffectPropSupportedComponents, 0, kOfxImageComponentRGBA);
   gPropHost->propSetString(props, kOfxImageEffectPropSupportedComponents, 1, kOfxImageComponentAlpha);
 
   // define the single source clip in both contexts
-  gEffectHost->clipDefine(effect, kOfxImageEffectSimpleSourceClipName, &props);
+  gEffectHost->clipDefine(effect, "Source", &props);
 
   // set the component types we can handle on our main input
   gPropHost->propSetString(props, kOfxImageEffectPropSupportedComponents, 0, kOfxImageComponentRGBA);
@@ -530,16 +571,19 @@ describeInContext( OfxImageEffectHandle  effect,  OfxPropertySetHandle inArgs)
   OfxParamSetHandle paramSet;
   gEffectHost->getParamSet(effect, &paramSet);
 
-  // overall scale param
-  defineParam(paramSet, "scale", "scale", "scale",
-	      "Scales the red rect", 0);
-  defineParam(paramSet, "source_scale", "source_scale", "source_scale",
-	      "Scales the source image", 0);
+  defineParam(paramSet, "R Gain", "R Gain", "R Gain",
+          "Red Gain", 0);
+  defineParam(paramSet, "G Gain", "G Gain", "G Gain",
+          "Green Gain", 0);
+  defineParam(paramSet, "B Gain", "B Gain", "B Gain",
+          "Blue Gain", 0);
 
   // make a page of controls and add my parameters to it
+  OfxParamHandle page;
   gParamHost->paramDefine(paramSet, kOfxParamTypePage, "Main", &props);
-  gPropHost->propSetString(props, kOfxParamPropPageChild, 0, "scale");
-  gPropHost->propSetString(props, kOfxParamPropPageChild, 1, "source_scale");
+  gPropHost->propSetString(props, kOfxParamPropPageChild, 0, "R Gain");
+  gPropHost->propSetString(props, kOfxParamPropPageChild, 1, "G Gain");
+  gPropHost->propSetString(props, kOfxParamPropPageChild, 2, "B Gain");
   return kOfxStatOK;
 }
 
@@ -552,9 +596,6 @@ describe(OfxImageEffectHandle  effect)
   OfxStatus stat;
   if((stat = ofxuFetchHostSuites()) != kOfxStatOK)
     return stat;
-
-  gOpenGLSuite =
-    (OfxImageEffectOpenGLRenderSuiteV1 *)gHost->fetchSuite(gHost->host, kOfxOpenGLRenderSuite, 1);
 
   // record a few host features
   gPropHost->propGetInt(gHost->host, kOfxImageEffectPropSupportsMultipleClipDepths, 0, &gHostSupportsMultipleBitDepths);
@@ -576,27 +617,22 @@ describe(OfxImageEffectHandle  effect)
   gPropHost->propSetString(effectProps, kOfxImageEffectPropSupportedPixelDepths, 2, kOfxBitDepthFloat);
 
   // set some labels and the group it belongs to
-  gPropHost->propSetString(effectProps, kOfxPropLabel, 0, "OFX OpenGL Example");
-  gPropHost->propSetString(effectProps, kOfxImageEffectPluginPropGrouping, 0, "OFX Example");
+  gPropHost->propSetString(effectProps, kOfxPropLabel, 0, "Resolve Simple Gain (OpenCL)");
+  gPropHost->propSetString(effectProps, kOfxImageEffectPluginPropGrouping, 0, "Resolve Simple Gain");
 
   // define the contexts we can be used in
   gPropHost->propSetString(effectProps, kOfxImageEffectPropSupportedContexts, 0, kOfxImageEffectContextFilter);
   gPropHost->propSetString(effectProps, kOfxImageEffectPropSupportedContexts, 1, kOfxImageEffectContextGeneral);
 
-  // we support OpenGL rendering (could also say "needed" here)
-  gPropHost->propSetString(effectProps, kOfxImageEffectPropOpenGLRenderSupported, 0, "true");
+  // we support OpenCL rendering
+  gPropHost->propSetString(effectProps, kOfxImageEffectPropOpenCLRenderSupported, 0, "true");
 
   {
-    const char *s = NULL;
-    stat = gPropHost->propGetString(gHost->host, kOfxImageEffectPropOpenGLRenderSupported, 0, &s);
-    DPRINT(("Host has OpenGL render support: %s (stat=%d)\n", s, stat));
-    gHostSupportsOpenGL = stat == 0 && !strcmp(s, "true");
+    const char *s = "<undefined>";
+    stat = gPropHost->propGetString(gHost->host, kOfxImageEffectPropOpenCLRenderSupported, 0, &s);
+    DPRINT(("Host has OpenCL render support: %s (stat=%d)\n", s, stat));
+    gHostSupportsOpenCL = stat == 0 && !strcmp(s, "true");
   }
-
-  // we support all the OpenGL bit depths
-  gPropHost->propSetString(effectProps, kOfxOpenGLPropPixelDepth, 0, kOfxBitDepthByte);
-  gPropHost->propSetString(effectProps, kOfxOpenGLPropPixelDepth, 1, kOfxBitDepthShort);
-  gPropHost->propSetString(effectProps, kOfxOpenGLPropPixelDepth, 2, kOfxBitDepthFloat);
 
   return kOfxStatOK;
 }
@@ -606,7 +642,6 @@ describe(OfxImageEffectHandle  effect)
 static OfxStatus
 pluginMain(const char *action,  const void *handle, OfxPropertySetHandle inArgs,  OfxPropertySetHandle outArgs)
 {
-  try {
   // cast to appropriate type
   OfxImageEffectHandle effect = (OfxImageEffectHandle) handle;
 
@@ -649,22 +684,7 @@ pluginMain(const char *action,  const void *handle, OfxPropertySetHandle inArgs,
   else if(strcmp(action, kOfxImageEffectActionGetTimeDomain) == 0) {
     return getTemporalDomain(effect, inArgs, outArgs);
   }
-  } catch (std::bad_alloc) {
-    // catch memory
-    //std::cout << "OFX Plugin Memory error." << std::endl;
-    return kOfxStatErrMemory;
-  } catch ( const std::exception& e ) {
-    // standard exceptions
-    //std::cout << "OFX Plugin error: " << e.what() << std::endl;
-    return kOfxStatErrUnknown;
-  } catch (int err) {
-    // ho hum, gone wrong somehow
-    return err;
-  } catch ( ... ) {
-    // everything else
-    //std::cout << "OFX Plugin error" << std::endl;
-    return kOfxStatErrUnknown;
-  }
+
 
   // other actions to take the default value
   return kOfxStatReplyDefault;
@@ -683,7 +703,7 @@ static OfxPlugin basicPlugin =
 {
   kOfxImageEffectPluginApi,
   1,
-  "com.genarts:OpenGLSamplePlugin",
+  "com.blackmagicdesign.ResolveSimpleGainOpenCLPlugin",
   1,
   0,
   setHostFunc,
@@ -691,7 +711,7 @@ static OfxPlugin basicPlugin =
 };
 
 // the two mandated functions
-EXPORT OfxPlugin *
+OfxPlugin *
 OfxGetPlugin(int nth)
 {
   if(nth == 0)
@@ -699,7 +719,7 @@ OfxGetPlugin(int nth)
   return 0;
 }
 
-EXPORT int
+int
 OfxGetNumberOfPlugins(void)
 {
   return 1;
