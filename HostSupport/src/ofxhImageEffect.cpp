@@ -108,6 +108,10 @@ namespace OFX {
         { kOfxImageEffectPropOpenGLRenderSupported, Property::eString, 1, false, "false"}, // OFX 1.3
         { kOfxOpenGLPropPixelDepth, Property::eString,  0, false, "" }, 
 #endif
+#ifdef OFX_EXTENSIONS_RESOLVE
+        { kOfxImageEffectPropOpenCLRenderSupported, Property::eString, 1, false, "false"},
+        { kOfxImageEffectPropCudaRenderSupported, Property::eString, 1, false, "false" },
+#endif
 #ifdef OFX_EXTENSIONS_NUKE
         { kFnOfxImageEffectPropMultiPlanar,   Property::eInt, 1, false, "0" },
         { kFnOfxImageEffectPropPassThroughComponents,   Property::eInt, 1, false, "0" },
@@ -1246,6 +1250,11 @@ namespace OFX {
 #        endif
 #       endif
           { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" }, // OFX 1.4
+#       ifdef OFX_EXTENSIONS_RESOLVE
+          { kOfxImageEffectPropOpenCLEnabled, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropCudaEnabled, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropOpenCLCommandQueue, Property::ePointer, 1, false, "0" },
+#       endif
 #       ifdef OFX_EXTENSIONS_NUKE
           { kFnOfxImageEffectPropView, Property::eInt, 1, true, "0" },
 #       endif
@@ -1342,6 +1351,11 @@ namespace OFX {
 #        endif
 #       endif
           { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" }, // OFX 1.4
+#       ifdef OFX_EXTENSIONS_RESOLVE
+          { kOfxImageEffectPropOpenCLEnabled, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropCudaEnabled, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropOpenCLCommandQueue, Property::ePointer, 1, false, "0" },
+#       endif
 #       ifdef OFX_EXTENSIONS_VEGAS
           { kOfxImageEffectPropRenderView, Property::eInt, 1, true, "0" },
           { kOfxImageEffectPropViewsToRender, Property::eInt, 1, true, "1" },
@@ -1455,6 +1469,11 @@ namespace OFX {
 #        endif
 #       endif
           { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" }, // OFX 1.4
+#       ifdef OFX_EXTENSIONS_RESOLVE
+          { kOfxImageEffectPropOpenCLEnabled, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropCudaEnabled, Property::eInt, 1, true, "0" },
+          { kOfxImageEffectPropOpenCLCommandQueue, Property::ePointer, 1, false, "0" },
+#       endif
 #       ifdef OFX_EXTENSIONS_NUKE
           { kFnOfxImageEffectPropView, Property::eInt, 1, true, "0" },
 #       endif
@@ -4100,6 +4119,9 @@ namespace OFX {
         { kOfxParamHostPropSupportsCustomInteract, Property::eInt, 1, true, "0" },
         { kOfxParamHostPropSupportsStringAnimation, Property::eInt, 1, true, "0" },
         { kOfxParamHostPropSupportsChoiceAnimation, Property::eInt, 1, true, "0"  },
+#     ifdef OFX_EXTENSIONS_RESOLVE
+        { kOfxParamHostPropSupportsStrChoiceAnimation, Property::eInt, 1, true, "0"  },
+#     endif
         { kOfxParamHostPropSupportsBooleanAnimation, Property::eInt, 1, true, "0" },
         { kOfxParamHostPropSupportsCustomAnimation, Property::eInt, 1, true, "0" },
         { kOfxPropHostOSHandle, Property::ePointer, 1, true, NULL },
@@ -4118,6 +4140,10 @@ namespace OFX {
 #     endif
         { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" }, // OFX 1.4
         { kOfxImageEffectHostPropNativeOrigin, Property::eString, 0, true, kOfxHostNativeOriginBottomLeft }, // OFX 1.4
+#     ifdef OFX_EXTENSIONS_RESOLVE
+        { kOfxImageEffectPropOpenCLRenderSupported, Property::eString, 1, false, "false"},
+        { kOfxImageEffectPropCudaRenderSupported, Property::eString, 1, false, "false" },
+#     endif
 #     ifdef OFX_EXTENSIONS_NUKE
         { kFnOfxImageEffectPropMultiPlanar,   Property::eInt, 1, false, "0" },
         { kFnOfxImageEffectCanTransform,      Property::eInt, 1, true, "0" },

@@ -89,6 +89,9 @@ namespace OFX {
     class RGBParamDescriptor;
     class BooleanParamDescriptor;
     class ChoiceParamDescriptor;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    class StrChoiceParamDescriptor;
+#endif
     class GroupParamDescriptor;
     class PageParamDescriptor;
     class PushButtonParamDescriptor;
@@ -109,6 +112,9 @@ namespace OFX {
     class StringParam;
     class BooleanParam;
     class ChoiceParam;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    class StrChoiceParam;
+#endif
     class CustomParam;
     class GroupParam;
     class PageParam;
@@ -129,6 +135,9 @@ namespace OFX {
                         eRGBAParam,
                         eBooleanParam,
                         eChoiceParam,
+#ifdef OFX_EXTENSIONS_RESOLVE
+                        eStrChoiceParam,
+#endif
                         eCustomParam,
                         eGroupParam,
                         ePageParam,
@@ -797,6 +806,37 @@ namespace OFX {
 #endif
     };
 
+#ifdef OFX_EXTENSIONS_RESOLVE
+    ////////////////////////////////////////////////////////////////////////////////
+    /** @brief Wraps up a string choice param */
+    class StrChoiceParamDescriptor : public ValueParamDescriptor
+    {
+    protected :
+        mDeclareProtectedAssignAndCCBase(StrChoiceParamDescriptor, ValueParamDescriptor);
+        StrChoiceParamDescriptor() { assert(false); }
+
+    protected :
+        /** @brief hidden constructor */
+        StrChoiceParamDescriptor(const std::string& p_Name, OfxPropertySetHandle p_Props);
+
+        // so it can make one
+        friend class ParamSetDescriptor;
+        
+    public :
+        /** @brief set the default value */
+        void setDefault(const std::string& p_DefaultValue);
+
+        /** @brief append an option */
+        void appendOption(const std::string& p_Enum, const std::string& p_Option);
+
+        /** @brief how many options do we have */
+        int getNOptions();
+
+        /** @brief clear all the options so as to add some new ones in */
+        void resetOptions();
+    };
+#endif
+
     ////////////////////////////////////////////////////////////////////////////////
     /** @brief Wraps up a group param, not much to it really */
     class GroupParamDescriptor : public ParamDescriptor {
@@ -1080,6 +1120,11 @@ namespace OFX {
 
         /** @brief Define a Choice param */
         ChoiceParamDescriptor *defineChoiceParam(const std::string &name);
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+        /** @brief Define a String Choice param */
+        StrChoiceParamDescriptor* defineStrChoiceParam(const std::string& p_Name);
+#endif
 
         /** @brief Define a group param */
         GroupParamDescriptor *defineGroupParam(const std::string &name);
@@ -1930,6 +1975,40 @@ namespace OFX {
         void resetToDefault();
     };
 
+#ifdef OFX_EXTENSIONS_RESOLVE
+    ////////////////////////////////////////////////////////////////////////////////
+    /** @brief Wraps up a string choice param */
+    class StrChoiceParam : public StringParam
+    {
+    protected :
+        mDeclareProtectedAssignAndCCBase(StrChoiceParam, StringParam);
+        StrChoiceParam() { assert(false); }
+
+    protected :
+        /** @brief hidden constructor */
+        StrChoiceParam(const ParamSet* p_ParamSet, const std::string& p_Name, OfxParamHandle p_Handle);
+
+        // so it can make one
+        friend class ParamSet;
+        
+    public :
+        /** @brief how many options do we have */
+        int getNOptions();
+
+        /** @brief append an option */
+        void appendOption(const std::string& p_Enum, const std::string& p_Option);
+
+        /** @brief set an option */
+        void setOption(const std::string& p_Index, const std::string& p_Option);
+
+        /** @brief get the option value */
+        void getOption(const std::string& p_Index, std::string& p_Option);
+
+        /** @brief clear all the options so as to add some new ones in */
+        void resetOptions();
+    };
+#endif
+
     ////////////////////////////////////////////////////////////////////////////////
     /** @brief Wraps up a boolean param */
     class BooleanParam : public ValueParam {
@@ -2275,6 +2354,11 @@ namespace OFX {
 
         /** @brief Fetch a Choice param */
         ChoiceParam *fetchChoiceParam(const std::string &name) const;
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+        /** @brief Fetch a String Choice param */
+        StrChoiceParam* fetchStrChoiceParam(const std::string& p_Name) const;
+#endif
 
         /** @brief Fetch a group param */
         GroupParam *fetchGroupParam(const std::string &name) const;
