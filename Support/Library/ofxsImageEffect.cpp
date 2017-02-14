@@ -39,6 +39,7 @@ England
 #include "ofxsSupportPrivate.h"
 #include <algorithm> // for find, min, max
 #include <cstring> // for strlen
+#include <sstream> // stringstream
 #ifdef DEBUG
 #include <iostream>
 #endif
@@ -280,7 +281,7 @@ namespace OFX {
     OfxImageEffectOpenGLRenderSuiteV1 *gOpenGLRenderSuite = 0;
 #endif
 #ifdef OFX_EXTENSIONS_NUKE
-    NukeOfxCameraSuiteV1* gCameraParameterSuite = 0;
+    NukeOfxCameraSuiteV1* gCameraSuite = 0;
     FnOfxImageEffectPlaneSuiteV1* gImageEffectPlaneSuiteV1 = 0;
     FnOfxImageEffectPlaneSuiteV2* gImageEffectPlaneSuiteV2 = 0;
 #endif
@@ -641,7 +642,7 @@ namespace OFX {
   }
 
 #ifdef OFX_EXTENSIONS_NATRON
-  /** @brief set the secretness of the param, defaults to false */
+  /** @brief set the secretness of the clip, defaults to false */
   void ClipDescriptor::setIsSecret(bool v)
   {
     _clipProps.propSetInt(kOfxParamPropSecret, v, false);
@@ -652,6 +653,14 @@ namespace OFX {
     ClipDescriptor::setHint(const std::string &v)
   {
     _clipProps.propSetString(kOfxParamPropHint, v, false);
+  }
+
+  /** @brief set the clip label and hint */
+  void 
+    ClipDescriptor::setLabelAndHint(const std::string &label, const std::string &hint)
+  {
+    setLabel(label);
+    setHint(hint);
   }
 #endif
 
@@ -746,11 +755,76 @@ namespace OFX {
     _clipProps.propSetInt(kOfxImageClipPropIsMask, int(v));
   }
 
+#ifdef OFX_EXTENSIONS_NATRON
+  /** @brief say whether this clip may contain images with a distortion function attached */
+  void ClipDescriptor::setCanDistort(bool v)
+  {
+    _clipProps.propSetInt(kOfxImageEffectPropCanDistort, int(v), false);
+  }
+#endif
+
 #ifdef OFX_EXTENSIONS_NUKE
   /** @brief say whether this clip may contain images with a transform attached */
   void ClipDescriptor::setCanTransform(bool v)
   {
     _clipProps.propSetInt(kFnOfxImageEffectCanTransform, int(v), false);
+  }
+#endif
+
+#ifdef OFX_EXTENSIONS_NUKE
+  ////////////////////////////////////////////////////////////////////////////////
+  // camera descriptor
+
+  /** @brief hidden constructor */
+  CameraDescriptor::CameraDescriptor(const std::string &name, OfxPropertySetHandle props)
+    : _cameraName(name)
+    , _cameraProps(props)
+  {
+    OFX::Validation::validateCameraDescriptorProperties(props);
+  }
+
+  /** @brief set the label properties */
+  void CameraDescriptor::setLabel(const std::string &label)
+  {
+    _cameraProps.propSetString(kOfxPropLabel, label);
+  }
+
+  /** @brief set the label properties */
+  void CameraDescriptor::setLabels(const std::string &label, const std::string &shortLabel, const std::string &longLabel)
+  {
+    setLabel(label);
+    _cameraProps.propSetString(kOfxPropShortLabel, shortLabel, false);
+    _cameraProps.propSetString(kOfxPropLongLabel, longLabel, false);
+  }
+
+#ifdef OFX_EXTENSIONS_NATRON
+  /** @brief set the secretness of the camera, defaults to false */
+  void CameraDescriptor::setIsSecret(bool v)
+  {
+    _cameraProps.propSetInt(kOfxParamPropSecret, v, false);
+  }
+
+  /** @brief set the camera hint */
+  void 
+    CameraDescriptor::setHint(const std::string &v)
+  {
+    _cameraProps.propSetString(kOfxParamPropHint, v, false);
+  }
+
+  /** @brief set the camera label and hint */
+  void 
+    CameraDescriptor::setLabelAndHint(const std::string &label, const std::string &hint)
+  {
+    setLabel(label);
+    setHint(hint);
+  }
+#endif
+
+
+  /** @brief say whether if the camera is optional, defaults to false */
+  void CameraDescriptor::setOptional(bool v)
+  {
+    _cameraProps.propSetInt(kOfxImageClipPropOptional, int(v));
   }
 #endif
 
@@ -788,6 +862,15 @@ namespace OFX {
         iter->second = NULL;
       }
     }
+#ifdef OFX_EXTENSIONS_NUKE
+    std::map<std::string, CameraDescriptor *>::iterator it;
+    for(it = _definedCameras.begin(); it != _definedCameras.end(); ++it) {
+      if(it->second) {
+        delete it->second;
+        it->second = NULL;
+      }
+    }
+#endif
   }
 
   /** @brief, set the label properties in a plugin */
@@ -1179,6 +1262,20 @@ namespace OFX {
   }
 #endif
 
+#ifdef OFX_EXTENSIONS_RESOLVE
+  /** @brief Does the plugin support OpenCL Render */
+  void ImageEffectDescriptor::setSupportsOpenCLRender(bool v)
+  {
+      _effectProps.propSetString(kOfxImageEffectPropOpenCLRenderSupported, (v ? "true" : "false"), false);
+  }
+
+  /** @brief Does the plugin support CUDA Render */
+  void ImageEffectDescriptor::setSupportsCudaRender(bool v)
+  {
+      _effectProps.propSetString(kOfxImageEffectPropCudaRenderSupported, (v ? "true" : "false"), false);
+  }
+#endif
+
 #ifdef OFX_SUPPORTS_OPENGLRENDER
   /** @brief Does the plugin support OpenGL accelerated rendering (but is also capable of CPU rendering) ? */
   void ImageEffectDescriptor::setSupportsOpenGLRender(bool v) {
@@ -1311,7 +1408,43 @@ namespace OFX {
     return clip;
   }
 
+#ifdef OFX_EXTENSIONS_NUKE
+  /** @brief Create a camera, only callable from describe in context */
+  CameraDescriptor *ImageEffectDescriptor::defineCamera(const std::string &name)
+  {
+    validateXMLString(name, false);
+    if (OFX::Private::gCameraSuite == NULL) {
+      throwHostMissingSuiteException(kNukeOfxCameraSuite);
+    }
+    // do we have the camera already
+    std::map<std::string, CameraDescriptor *>::const_iterator search;
+    search = _definedCameras.find(name);
+    if(search != _definedCameras.end())
+      return search->second;
+
+    // no, so make it
+    OfxPropertySetHandle propSet;
+    OfxStatus stat = OFX::Private::gCameraSuite->cameraDefine(_effectHandle, name.c_str(), &propSet);
+    throwSuiteStatusException(stat);
+
+    CameraDescriptor *camera = new CameraDescriptor(name, propSet);
+
+    _definedCameras[name] = camera;
+
+    return camera;
+  }
+#endif
+
 #ifdef OFX_EXTENSIONS_NATRON
+  /** @brief indicate that a plugin or host can handle distortion function effects */
+  void ImageEffectDescriptor::setCanDistort(bool v)
+  {
+    // the header says this property is on the effect instance, but on Nuke it only exists on the effect descriptor
+    if (gHostDescription.canDistort) {
+      _effectProps.propSetInt(kOfxImageEffectPropCanDistort, int(v), false);
+    }
+  }
+
   /** @brief indicate if the host may add a channel selector */
   void ImageEffectDescriptor::setChannelSelector(PixelComponentEnum v)
   {
@@ -1434,6 +1567,10 @@ namespace OFX {
 
     _renderScale.x = _renderScale.y = 1.;
     _imageProps.propGetDoubleN(kOfxImageEffectPropRenderScale, &_renderScale.x, 2, false);
+#ifdef OFX_EXTENSIONS_NATRON
+    _distortionFunction = (OfxDistortionFunctionV1)_imageProps.propGetPointer(kOfxPropDistortionFunction, false);
+    _distortionFunctionData = _imageProps.propGetPointer(kOfxPropDistortionFunctionData, false);
+#endif
 #ifdef OFX_EXTENSIONS_NUKE
     std::fill(_transform, _transform + 9, 0.);
     if (_imageProps.propGetDimension(kFnOfxPropMatrix2D, false) == 0) {
@@ -1585,6 +1722,14 @@ namespace OFX {
     Clip::setHint(const std::string &v)
   {
     _clipProps.propSetString(kOfxParamPropHint, v, false);
+  }
+
+  /** @brief set the clip label and hint */
+  void 
+    Clip::setLabelAndHint(const std::string &label, const std::string &hint)
+  {
+    setLabel(label);
+    setHint(hint);
   }
 
   void
@@ -1805,7 +1950,7 @@ namespace OFX {
     if (par != 0.) {
       return par;
     }
-    return 1.;
+    return 1.;  // This error could happen in Eyeon Fusion.
   }
 
   /** @brief get the frame rate, in frames per second on this clip, after any clip preferences have been applied */
@@ -1851,6 +1996,14 @@ namespace OFX {
     throwSuiteStatusException(stat);
     return bounds;
   }
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+  /** @brief is the clip for thumbnail */
+  bool Clip::isForThumbnail(void) const
+  {
+      return (_clipProps.propGetInt(kOfxImageClipPropThumbnail, false) != 0);
+  }
+#endif
 
   /** @brief fetch an image */
   Image *Clip::fetchImage(double t)
@@ -2055,6 +2208,91 @@ namespace OFX {
     return new Texture(hTex);
   }
 #endif
+
+#ifdef OFX_EXTENSIONS_NUKE
+  ////////////////////////////////////////////////////////////////////////////////
+  // camera instance
+
+  /** @brief hidden constructor */
+  Camera::Camera(ImageEffect *effect, const std::string &name, NukeOfxCameraHandle handle, OfxPropertySetHandle props)
+    : _cameraName(name)
+    , _cameraProps(props)
+    , _cameraHandle(handle)
+    , _effect(effect)
+  {
+    OFX::Validation::validateCameraInstanceProperties(_cameraProps);
+  }
+
+#ifdef OFX_EXTENSIONS_NATRON
+  /** @brief set the label property */
+  void 
+    Camera::setLabel(const std::string &label)
+  {
+    _cameraProps.propSetString(kOfxPropLabel, label, false);
+  }
+
+  /** @brief set the label properties */
+  void 
+    Camera::setLabels(const std::string &label, const std::string &shortLabel, const std::string &longLabel)
+  {
+    setLabel(label);
+    _cameraProps.propSetString(kOfxPropShortLabel, shortLabel, false);
+    _cameraProps.propSetString(kOfxPropLongLabel, longLabel, false);
+  }
+
+  /** @brief set the secretness of the param, defaults to false */
+  void Camera::setIsSecret(bool v)
+  {
+    _cameraProps.propSetInt(kOfxParamPropSecret, v, false);
+  }
+
+  /** @brief set the camera hint */
+  void 
+    Camera::setHint(const std::string &v)
+  {
+    _cameraProps.propSetString(kOfxParamPropHint, v, false);
+  }
+
+  /** @brief set the camera label and hint */
+  void 
+    Camera::setLabelAndHint(const std::string &label, const std::string &hint)
+  {
+    setLabel(label);
+    setHint(hint);
+  }
+#endif
+
+  /** @brief fetch the label */
+  void Camera::getLabel(std::string &label) const
+  {
+    label      = _cameraProps.propGetString(kOfxPropLabel);
+  }
+
+  /** @brief fetch the labels */
+  void Camera::getLabels(std::string &label, std::string &shortLabel, std::string &longLabel) const
+  {
+    getLabel(label);
+    shortLabel = _cameraProps.propGetString(kOfxPropShortLabel, false);
+    longLabel  = _cameraProps.propGetString(kOfxPropLongLabel, false);
+  }
+
+
+  /** @brief is the camera connected */
+  bool Camera::isConnected(void) const
+  {
+    return _cameraProps.propGetInt(kOfxImageClipPropConnected) != 0;
+  }
+
+  /** @brief Get an arbitrary camera parameter for a given time and view */
+  void Camera::getParameter(const char* paramName, double time, int view, double* baseReturnAddress, int returnSize) const
+  {
+    OfxStatus stat = OFX::Private::gCameraSuite->cameraGetParameter(_cameraHandle, paramName, time, view, baseReturnAddress, returnSize);
+    throwSuiteStatusException(stat);
+  }
+
+#endif // OFX_EXTENSIONS_NUKE
+
+
   ////////////////////////////////////////////////////////////////////////////////
   /// image effect 
 
@@ -2190,6 +2428,20 @@ namespace OFX {
     return _effectProps.propGetInt(kOfxImageEffectPropSupportsTiles) != 0;
   }
 
+#ifdef OFX_EXTENSIONS_NATRON
+  void
+  ImageEffect::setCanDistort(bool v)
+  {
+    _effectProps.propSetInt(kOfxImageEffectPropCanDistort, int(v), false);
+  }
+
+  bool
+  ImageEffect::getCanDistort() const
+  {
+    return _effectProps.propGetInt(kOfxImageEffectPropCanDistort, false) != 0;
+  }
+#endif
+
 #ifdef OFX_EXTENSIONS_NUKE
   void
   ImageEffect::setCanTransform(bool v)
@@ -2320,12 +2572,32 @@ namespace OFX {
   }
 
 #ifdef OFX_EXTENSIONS_NUKE
-  /** @brief Fetch a camera param */
-  CameraParam* ImageEffect::fetchCameraParam(const std::string& name) const
+  /** @brief Fetch the named camera from this instance */
+  Camera* ImageEffect::fetchCamera(const std::string& name)
   {
-    CameraParam *paramPtr;
-    fetchAttribute(_effectHandle, name, paramPtr);
-    return paramPtr;
+    if (!OFX::Private::gCameraSuite) {
+      throwHostMissingSuiteException(kNukeOfxCameraSuite);
+    }
+    // do we have the camera already
+    std::map<std::string, Camera *>::const_iterator search;
+    search = _fetchedCameras.find(name);
+    if(search != _fetchedCameras.end())
+      return search->second;
+
+    // fetch the property set handle of the effect
+    NukeOfxCameraHandle cameraHandle = 0;
+    OfxPropertySetHandle propHandle = 0;
+    OfxStatus stat = OFX::Private::gCameraSuite->cameraGetHandle(_effectHandle, name.c_str(), &cameraHandle, &propHandle);
+    throwSuiteStatusException(stat);
+
+    // and make one
+    Camera *newCamera = new Camera(this, name, cameraHandle, propHandle);
+
+    // add it in
+    _fetchedCameras[name] = newCamera;
+
+    // return it
+    return newCamera;
   }
 #endif
 
@@ -2510,6 +2782,19 @@ namespace OFX {
   bool ImageEffect::invokeHelp()
   {
     // by default, do nothing
+    return false;
+  }
+#endif
+
+#ifdef OFX_EXTENSIONS_NATRON
+  /** @brief get the distortion function */
+  bool ImageEffect::getDistortion(const DistortionArguments &/*args*/, Clip * &/*transformClip*/, double /*transformMatrix*/[9],
+                                  OfxDistortionFunctionV1* /*distortionFunction*/,
+                                  void** /*distortionFunctionData*/,
+                                  int* /*distortionFunctionDataSizeHintInBytes*/,
+                                  OfxDistortionFreeDataFunctionV1* /*freeDataFunction*/)
+  {
+    // by default, do the default
     return false;
   }
 #endif
@@ -2923,8 +3208,8 @@ namespace OFX {
     }
   }
 
-  /** @brief Set whether the effect can be continously sampled. */
-  void ClipPreferencesSetter::setOutputHasContinousSamples(bool v)
+  /** @brief Set whether the effect can be continuously sampled. */
+  void ClipPreferencesSetter::setOutputHasContinuousSamples(bool v)
   {
     doneSomething_ = true;
     outArgs_.propSetInt(kOfxImageClipPropContinuousSamples, int(v));
@@ -3117,11 +3402,18 @@ namespace OFX {
         gHostDescription.supportsStringAnimation    = hostProps.propGetInt(kOfxParamHostPropSupportsStringAnimation) != 0;
         gHostDescription.supportsCustomInteract     = hostProps.propGetInt(kOfxParamHostPropSupportsCustomInteract) != 0;
         gHostDescription.supportsChoiceAnimation    = hostProps.propGetInt(kOfxParamHostPropSupportsChoiceAnimation) != 0;
+#ifdef OFX_EXTENSIONS_RESOLVE
+        gHostDescription.supportsStrChoiceAnimation = hostProps.propGetInt(kOfxParamHostPropSupportsStrChoiceAnimation, false) != 0;
+#endif
         gHostDescription.supportsBooleanAnimation   = hostProps.propGetInt(kOfxParamHostPropSupportsBooleanAnimation) != 0;
         gHostDescription.supportsCustomAnimation    = hostProps.propGetInt(kOfxParamHostPropSupportsCustomAnimation) != 0;
         gHostDescription.osHandle                   = hostProps.propGetPointer(kOfxPropHostOSHandle, false);
         gHostDescription.supportsParametricParameter = gParametricParameterSuite != 0;
         gHostDescription.supportsParametricAnimation = hostProps.propGetInt(kOfxParamHostPropSupportsParametricAnimation, false) != 0;
+#ifdef OFX_EXTENSIONS_RESOLVE
+        gHostDescription.supportsOpenCLRender        = hostProps.propGetString(kOfxImageEffectPropOpenCLRenderSupported, 0, false) == "true";
+        gHostDescription.supportsCudaRender          = hostProps.propGetString(kOfxImageEffectPropCudaRenderSupported, 0, false) == "true";
+#endif
         gHostDescription.supportsRenderQualityDraft = hostProps.propGetInt(kOfxImageEffectPropRenderQualityDraft, false) != 0; // appeared in OFX 1.4
         {
             std::string originStr = hostProps.propGetString(kOfxImageEffectHostPropNativeOrigin, false); // appeared in OFX 1.4
@@ -3153,7 +3445,7 @@ namespace OFX {
         gHostDescription.supportsOpenGLRender = gOpenGLRenderSuite != 0 && hostProps.propGetString(kOfxImageEffectPropOpenGLRenderSupported, 0, false) == "true";
 #endif
 #ifdef OFX_EXTENSIONS_NUKE
-        gHostDescription.supportsCameraParameter    = gCameraParameterSuite != 0;
+        gHostDescription.supportsCamera    = gCameraSuite != 0;
         gHostDescription.canTransform               = hostProps.propGetInt(kFnOfxImageEffectCanTransform, false) != 0;
         gHostDescription.isMultiPlanar              = hostProps.propGetInt(kFnOfxImageEffectPropMultiPlanar, false) != 0;
 #endif
@@ -3166,6 +3458,7 @@ namespace OFX {
         gHostDescription.supportsDynamicChoices     = hostProps.propGetInt(kNatronOfxParamHostPropSupportsDynamicChoices, false) != 0;
         gHostDescription.supportsCascadingChoices   = hostProps.propGetInt(kNatronOfxParamPropChoiceCascading, false) != 0;
         gHostDescription.supportsChannelSelector    = hostProps.propGetString(kNatronOfxImageEffectPropChannelSelector, false) == kOfxImageComponentRGBA;
+        gHostDescription.canDistort                 = hostProps.propGetInt(kOfxImageEffectPropCanDistort, false) != 0;
 
         int nOverlayHandles = hostProps.propGetDimension(kNatronOfxPropNativeOverlays, false);
         for (int i = 0; i < nOverlayHandles; ++i) {
@@ -3235,7 +3528,7 @@ namespace OFX {
         gOpenGLRenderSuite = (OfxImageEffectOpenGLRenderSuiteV1*) fetchSuite(kOfxOpenGLRenderSuite, 1, true);
 #endif
 #ifdef OFX_EXTENSIONS_NUKE
-        gCameraParameterSuite = (NukeOfxCameraSuiteV1*) fetchSuite(kNukeOfxCameraSuite, 1, true );
+        gCameraSuite = (NukeOfxCameraSuiteV1*) fetchSuite(kNukeOfxCameraSuite, 1, true );
         gImageEffectPlaneSuiteV1 = (FnOfxImageEffectPlaneSuiteV1*) fetchSuite(kFnOfxImageEffectPlaneSuite, 1, true );
         gImageEffectPlaneSuiteV2 = (FnOfxImageEffectPlaneSuiteV2*) fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true );
 #endif
@@ -3299,7 +3592,7 @@ namespace OFX {
         gInteractSuite = 0;
         gParametricParameterSuite = 0;
 #ifdef OFX_EXTENSIONS_NUKE
-        gCameraParameterSuite = 0;
+        gCameraSuite = 0;
         gImageEffectPlaneSuiteV1 = 0;
         gImageEffectPlaneSuiteV2 = 0;
 #endif
@@ -3409,6 +3702,12 @@ namespace OFX {
       args.renderWindow.x1 = args.renderWindow.y1 = args.renderWindow.x2 = args.renderWindow.y2 = 0.;
       inArgs.propGetIntN(kOfxImageEffectPropRenderWindow, &args.renderWindow.x1, 4);
 
+#ifdef OFX_EXTENSIONS_RESOLVE
+      args.isEnabledOpenCLRender = inArgs.propGetInt(kOfxImageEffectPropOpenCLEnabled, false) != 0;
+      args.isEnabledCudaRender   = inArgs.propGetInt(kOfxImageEffectPropCudaEnabled, false) != 0;
+      args.pOpenCLCmdQ           = inArgs.propGetPointer(kOfxImageEffectPropOpenCLCommandQueue, false);
+#endif
+
 #ifdef OFX_SUPPORTS_OPENGLRENDER
       // Don't throw an exception if the following inArgs are not present.
       // OpenGL rendering appeared in OFX 1.3
@@ -3504,6 +3803,12 @@ namespace OFX {
 
       args.renderScale.x = args.renderScale.y = 1.;
       inArgs.propGetDoubleN(kOfxImageEffectPropRenderScale, &args.renderScale.x, 2);
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+      args.isEnabledOpenCLRender = inArgs.propGetInt(kOfxImageEffectPropOpenCLEnabled, false) != 0;
+      args.isEnabledCudaRender   = inArgs.propGetInt(kOfxImageEffectPropCudaEnabled, false) != 0;
+      args.pOpenCLCmdQ           = inArgs.propGetPointer(kOfxImageEffectPropOpenCLCommandQueue, false);
+#endif
 
 #ifdef OFX_SUPPORTS_OPENGLRENDER
       // Don't throw an exception if the following inArgs are not present.
@@ -3766,15 +4071,14 @@ namespace OFX {
               std::vector<OfxRangeD>::iterator j;
               int n = 0;
 
-              try {
+              // The host may not have the property if the clip is not connected (Resolve).
+              // Just proceed to the next clip.
+              if (outArgs_.propExists(propName.c_str())) {
               // and set 'em
               for(j = clipRange.begin(); j < clipRange.end(); ++j) {
                 outArgs_.propSetDouble(propName.c_str(), j->min, n++);
                 outArgs_.propSetDouble(propName.c_str(), j->max, n++);
               }
-              } catch (Exception::PropertyUnknownToHost) {
-                // The host may not have the property if the clip is not connected (Resolve).
-                // Just proceed to the next clip.
               }
             }
           }

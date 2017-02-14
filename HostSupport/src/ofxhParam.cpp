@@ -52,6 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <float.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <sstream> // stringstream
 
 namespace OFX {
 
@@ -217,6 +218,9 @@ namespace OFX {
         { kOfxParamTypeDouble,    Property::eDouble, 1 },
         { kOfxParamTypeBoolean,   Property::eInt,    1 },
         { kOfxParamTypeChoice,    Property::eInt,    1 },
+#ifdef OFX_EXTENSIONS_RESOLVE
+        { kOfxParamTypeStrChoice, Property::eString, 1 },
+#endif
         { kOfxParamTypeRGBA,      Property::eDouble, 4 },
         { kOfxParamTypeRGB,       Property::eDouble, 3 },
         { kOfxParamTypeDouble2D,  Property::eDouble, 2 },
@@ -320,11 +324,20 @@ namespace OFX {
           { kOfxParamPropChoiceLabelOption, Property::eString,  0,    false,    "" },
 #endif
 #ifdef OFX_EXTENSIONS_NATRON
+          { kOfxParamPropChoiceEnum,                    Property::eString, 0, false,    "" },
           { kNatronOfxParamPropChoiceCascading,         Property::eInt, 1,    false,    "0"},
           { kNatronOfxParamPropChoiceHostCanAddOptions, Property::eInt, 1,    false,    "0"},
 #endif
           Property::propSpecEnd
         };
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+        static const Property::PropSpec allStrChoice[] = {
+          { kOfxParamPropChoiceEnum,      Property::eString,    0,    false,    "" },
+          { kOfxParamPropChoiceOption,    Property::eString,    0,    false,    "" },
+          Property::propSpecEnd
+        };
+#endif
 
         static const Property::PropSpec allCustom[] = {
           { kOfxParamPropCustomInterpCallbackV1,    Property::ePointer,    1,    false,    0 },
@@ -391,6 +404,12 @@ namespace OFX {
         if (type == kOfxParamTypeChoice) {
           _properties.addProperties(allChoice);
         }
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+        if (type == kOfxParamTypeStrChoice) {
+          _properties.addProperties(allStrChoice);
+        }
+#endif
 
         if (type == kOfxParamTypeCustom) {
           _properties.addProperties(allCustom);
@@ -476,7 +495,10 @@ namespace OFX {
         /// If host doesn't support animation on them, then setting kOfxParamPropIsAnimating to 0 or 1 doesn't matter
         /// so just set the kOfxParamPropIsAnimating property to 0 for all those "extra animating" params.
         bool animates = type != kOfxParamTypeCustom && type != kOfxParamTypeString && type != kOfxParamTypeBoolean && type != kOfxParamTypeChoice;
-          
+#ifdef OFX_EXTENSIONS_RESOLVE
+        animates = animates && type != kOfxParamTypeStrChoice;
+#endif
+
         Property::PropSpec variantProps[] = {
           { kOfxParamPropAnimates,    Property::eInt, 1,       false, animates ? "1" : "0" },
           { kOfxParamPropDefault,     valueType,               dim, false, valueType == Property::eString ? "" : "0" },
@@ -988,6 +1010,13 @@ namespace OFX {
           setOption(num);
         }
       }
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+#ifdef __GNUC__
+#warning "TODO: StrChoiceInstance"
+#endif
+#endif
+
       //
       // IntegerInstance
       //

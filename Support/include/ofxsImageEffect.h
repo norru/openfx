@@ -44,7 +44,7 @@ of the direct OFX objects and any library side only functions.
 */
 #include <map>
 #include <string>
-#include <sstream>
+#include <sstream> // stringstream
 #include <memory>
 #include "ofxsParam.h"
 #include "ofxsInteract.h"
@@ -454,6 +454,9 @@ namespace OFX {
     bool supportsStringAnimation;
     bool supportsCustomInteract;
     bool supportsChoiceAnimation;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    bool supportsStrChoiceAnimation;
+#endif
     bool supportsBooleanAnimation;
     bool supportsCustomAnimation;
     void* osHandle;
@@ -461,11 +464,15 @@ namespace OFX {
     bool supportsParametricAnimation;
     bool supportsRenderQualityDraft;
     NativeOriginEnum nativeOrigin;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    bool supportsOpenCLRender;
+    bool supportsCudaRender;
+#endif
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     bool supportsOpenGLRender;
 #endif
 #ifdef OFX_EXTENSIONS_NUKE
-    bool supportsCameraParameter;
+    bool supportsCamera;
     bool canTransform;
     bool isMultiPlanar;
 #endif
@@ -487,6 +494,7 @@ namespace OFX {
     bool supportsDynamicChoices;
     bool supportsCascadingChoices;
     bool supportsChannelSelector;
+    bool canDistort;
 
     struct NativeOverlayHandle
     {
@@ -542,6 +550,8 @@ namespace OFX {
 
     PropertySet &getPropertySet() {return _clipProps;}
 
+    /** @brief returns the clip name */
+    const std::string &getName(void) const {return _clipName;}
 
     /** @brief set the label properties */
     void setLabel(const std::string &label);
@@ -555,6 +565,12 @@ namespace OFX {
 
     /** @brief set the clip hint */
     void setHint(const std::string &hint);
+
+    /** @brief set the clip label and hint */
+    void setLabelAndHint(const std::string &label, const std::string &hint);
+
+    /** @brief say whether this clip may contain images with a distortion function attached */
+    void setCanDistort(bool v);
 #endif
 
     /** @brief set how fielded images are extracted from the clip defaults to eFieldExtractDoubled */
@@ -585,6 +601,57 @@ namespace OFX {
 #endif
   };
 
+#ifdef OFX_EXTENSIONS_NUKE
+  ////////////////////////////////////////////////////////////////////////////////
+  /** @brief Wraps up a camera */
+  class CameraDescriptor {
+  protected :
+    mDeclareProtectedAssignAndCC(CameraDescriptor);
+    CameraDescriptor(void) {assert(false);}
+
+  protected :
+    /** @brief name of the camera */
+    std::string _cameraName;
+
+    /** @brief properties for this camera */
+    PropertySet _cameraProps;
+
+  protected :
+    /** @brief hidden constructor */
+    CameraDescriptor(const std::string &name, OfxPropertySetHandle props);
+
+    friend class ImageEffectDescriptor;
+
+  public :
+    const PropertySet &getPropertySet() const {return _cameraProps;}
+
+    PropertySet &getPropertySet() {return _cameraProps;}
+
+    /** @brief returns the camera name */
+    const std::string &getName(void) const {return _cameraName;}
+
+    /** @brief set the label properties */
+    void setLabel(const std::string &label);
+
+    /** @brief set the label properties */
+    void setLabels(const std::string &label, const std::string &shortLabel, const std::string &longLabel);
+
+#ifdef OFX_EXTENSIONS_NATRON
+    /** @brief set the secretness of the camera, defaults to false */
+    void setIsSecret(bool v);
+
+    /** @brief set the camera hint */
+    void setHint(const std::string &hint);
+
+    /** @brief set the camera label and hint */
+    void setLabelAndHint(const std::string &label, const std::string &hint);
+#endif
+
+    /** @brief say whether if the camera is optional, defaults to false */
+    void setOptional(bool v);
+  };
+#endif
+
   ////////////////////////////////////////////////////////////////////////////////
   /** @brief Wraps up an effect descriptor, used in the describe actions */
   class ImageEffectDescriptor : public ParamSetDescriptor
@@ -597,11 +664,16 @@ namespace OFX {
     /** @brief The effect handle */
     OfxImageEffectHandle _effectHandle;
 
-    /** @brief properties for this clip */
+    /** @brief properties for this effect */
     PropertySet _effectProps;
 
-    /** @brief Set of all previously defined parameters, defined on demand */
+    /** @brief Set of all previously defined clips, defined on demand */
     std::map<std::string, ClipDescriptor *> _definedClips;
+
+#ifdef OFX_EXTENSIONS_NUKE
+    /** @brief Set of all previously defined clips, defined on demand */
+    std::map<std::string, CameraDescriptor *> _definedCameras;
+#endif
 
     /** @brief Set of strings for clip preferences action (stored in here so the array persists and can be used in a property name)*/
     std::map<std::string, std::string> _clipComponentsPropNames;
@@ -702,6 +774,14 @@ namespace OFX {
     /** @brief If the slave  param changes the clip preferences need to be re-evaluated */
     void addClipPreferencesSlaveParam(ParamDescriptor &p);
 
+#ifdef OFX_EXTENSIONS_RESOLVE
+    /** @brief Does the plugin support OpenCL Render, defaults to false */
+    void setSupportsOpenCLRender(bool v);
+
+    /** @brief Does the plugin support CUDA Render, defaults to false */
+    void setSupportsCudaRender(bool v);
+#endif
+
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     /** @brief Does the plugin support OpenGL accelerated rendering (but is also capable of CPU rendering) ? */
     void setSupportsOpenGLRender(bool v);
@@ -780,6 +860,14 @@ namespace OFX {
     */
     ClipDescriptor *defineClip(const std::string &name);
 
+#ifdef OFX_EXTENSIONS_NUKE
+    /** @brief Create a camera, only callable from describe in context
+
+    The returned camera \em must not be deleted by the client code. This is all managed by the ImageEffectDescriptor itself.
+    */
+    CameraDescriptor *defineCamera(const std::string &name);
+#endif
+
     /** @brief Access to the string maps needed for runtime properties. Because the char array must persist after the call,
     we need these to be stored in the descriptor, which is only deleted on unload.*/
 
@@ -803,6 +891,9 @@ namespace OFX {
 #endif // #if defined(WIN32) || defined(WIN64)
 #endif
 #ifdef OFX_EXTENSIONS_NATRON
+  /** @brief indicate that a plugin or host can handle distortion function effects */
+  void setCanDistort(bool v);
+
   /** @brief indicate if the host may add a channel selector */
   void setChannelSelector(PixelComponentEnum v);
 
@@ -836,6 +927,10 @@ namespace OFX {
 #ifdef OFX_EXTENSIONS_NUKE
     double _transform[9];                    /**< @brief a 2D transform to apply to the image */
     bool _transformIsIdentity;
+#endif
+#ifdef OFX_EXTENSIONS_NATRON
+    OfxDistortionFunctionV1 _distortionFunction;
+    const void* _distortionFunctionData;
 #endif
 
   public :
@@ -894,6 +989,14 @@ namespace OFX {
 
     /** @brief is the transform identity? */
     bool getTransformIsIdentity() const { return _transformIsIdentity; }
+#endif
+
+#ifdef OFX_EXTENSIONS_NATRON
+    /** @brief the 2D distortion function attached to this image. */
+    OfxDistortionFunctionV1 getDistortionFunction(const void** distortionFunctionData) const {
+      *distortionFunctionData = _distortionFunctionData;
+      return _distortionFunction;
+    }
 #endif
   };
 
@@ -1009,6 +1112,9 @@ namespace OFX {
     /// get the underlying property set on this clip
     PropertySet &getPropertySet() {return _clipProps;}
 
+    /** @brief returns the clip name */
+    const std::string &getName(void) const {return _clipName;}
+
 #ifdef OFX_EXTENSIONS_NATRON
     /** @brief set the label property in a clip */
     void setLabel(const std::string &label);
@@ -1021,6 +1127,9 @@ namespace OFX {
 
     /** @brief set the clip hint */
     void setHint(const std::string &hint);
+
+    /** @brief set the clip hint */
+    void setLabelAndHint(const std::string &label, const std::string &hint);
 
     /* @brief Get the clip format in pixel coordinates */
     void getFormat(OfxRectI &format) const;
@@ -1088,6 +1197,11 @@ namespace OFX {
 
     /** @brief get the RoD for this clip in the cannonical coordinate system */
     OfxRectD getRegionOfDefinition(double t);
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+    /** @brief is the clip for thumbnail */
+    bool isForThumbnail(void) const;
+#endif
 
 #ifdef OFX_EXTENSIONS_NUKE
     
@@ -1181,6 +1295,86 @@ namespace OFX {
 #endif
   };
 
+#ifdef OFX_EXTENSIONS_NUKE
+  ////////////////////////////////////////////////////////////////////////////////
+  /** @brief Wraps up a camera instance */
+  class Camera {
+  protected :
+    mDeclareProtectedAssignAndCC(Camera);
+
+    /** @brief name of the camera */
+    std::string _cameraName;
+
+    /** @brief properties for this camera */
+    PropertySet _cameraProps;
+
+    /** @brief handle for this camera */
+    NukeOfxCameraHandle _cameraHandle;
+
+    /** @brief effect instance that owns this camera */
+    ImageEffect *_effect;
+
+    /** @brief hidden constructor */
+    Camera(ImageEffect *effect, const std::string &name, NukeOfxCameraHandle handle, OfxPropertySetHandle props);
+
+    /** @brief so one can be made */
+    friend class ImageEffect;
+
+  public :
+    /// get the underlying property set on this camera
+    const PropertySet &getPropertySet() const {return _cameraProps;}
+
+    /// get the underlying property set on this camera
+    PropertySet &getPropertySet() {return _cameraProps;}
+
+    /** @brief returns the camera name */
+    const std::string &getName(void) const {return _cameraName;}
+
+#ifdef OFX_EXTENSIONS_NATRON
+    /** @brief set the label property in a camera */
+    void setLabel(const std::string &label);
+
+    /** @brief set the label properties in a camera */
+    void setLabels(const std::string &label, const std::string &shortLabel, const std::string &longLabel);
+
+    /** @brief set the secretness of the camera, defaults to false */
+    void setIsSecret(bool v);
+
+    /** @brief set the camera hint */
+    void setHint(const std::string &hint);
+
+    /** @brief set the camera hint */
+    void setLabelAndHint(const std::string &label, const std::string &hint);
+#endif
+
+    /// get the OFX camera handle
+    NukeOfxCameraHandle getHandle() {return _cameraHandle;}
+
+    /** @brief get the name */
+    const std::string &name(void) const {return _cameraName;}
+
+    /** @brief fetch the label */
+    void getLabel(std::string &label) const;
+
+    /** @brief fetch the labels */
+    void getLabels(std::string &label, std::string &shortLabel, std::string &longLabel) const;
+
+    /** @brief is the camera connected */
+    bool isConnected(void) const;
+
+    /** @brief Get an arbitrary camera parameter for a given time and view
+
+     \arg camera       - the handle of the camera, as obtained from cameraGetHandle
+     \arg time         - the time to evaluate the parameter for
+     \arg view         - the view to evaluate the parameter for
+     \arg paramName    - parameter name to look up (matches name of knob in Nuke, see defines at top of \ref ofxCamera.h)
+     \arg baseReturnAddress - base address to store the evaluated result
+     \arg returnSize   - the number of doubles at the baseReturnAddress
+     */
+    void getParameter(const char* paramName, double time, int view, double* baseReturnAddress, int returnSize) const;
+  };
+#endif
+
   ////////////////////////////////////////////////////////////////////////////////
   /** @brief Class that skins image memory allocation */
   class ImageMemory {
@@ -1208,6 +1402,11 @@ namespace OFX {
     OfxPointD renderScale;
     OfxRectI  renderWindow;
     FieldEnum fieldToRender;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    bool      isEnabledOpenCLRender;
+    bool      isEnabledCudaRender;
+    void*     pOpenCLCmdQ;
+#endif
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     bool      openGLEnabled;
 #ifdef OFX_EXTENSIONS_NATRON
@@ -1248,6 +1447,11 @@ namespace OFX {
     double    frameStep;
     bool      isInteractive;
     OfxPointD renderScale;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    bool      isEnabledOpenCLRender;
+    bool      isEnabledCudaRender;
+    void*     pOpenCLCmdQ;
+#endif
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     bool      openGLEnabled;
 #ifdef OFX_EXTENSIONS_NATRON
@@ -1266,6 +1470,11 @@ namespace OFX {
   struct EndSequenceRenderArguments {
     bool      isInteractive;
     OfxPointD renderScale;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    bool      isEnabledOpenCLRender;
+    bool      isEnabledCudaRender;
+    void*     pOpenCLCmdQ;
+#endif
 #ifdef OFX_SUPPORTS_OPENGLRENDER
     bool      openGLEnabled;
 #ifdef OFX_EXTENSIONS_NATRON
@@ -1325,6 +1534,16 @@ namespace OFX {
 #ifdef OFX_EXTENSIONS_NUKE
   /** @brief POD struct to pass arguments into @ref OFX::ImageEffect::getTransform */
   struct TransformArguments {
+    double    time;
+    OfxPointD renderScale;
+    FieldEnum fieldToRender;
+    int       renderView;
+  };
+#endif
+
+#ifdef OFX_EXTENSIONS_NATRON
+  /** @brief POD struct to pass arguments into @ref OFX::ImageEffect::getDistortion */
+  struct DistortionArguments {
     double    time;
     OfxPointD renderScale;
     FieldEnum fieldToRender;
@@ -1499,11 +1718,11 @@ namespace OFX {
     */
     void setOutputPremultiplication(PreMultiplicationEnum v);
 
-    /** @brief Set whether the effect can be continously sampled.
+    /** @brief Set whether the effect can be continuously sampled.
 
     Defaults to false. 
     */
-    void setOutputHasContinousSamples(bool v);
+    void setOutputHasContinuousSamples(bool v);
 
     /** @brief Sets whether the effect will produce different images in all frames, even if the no params or input images are varying (eg: a noise generator).
 
@@ -1567,8 +1786,13 @@ namespace OFX {
     /** @brief the context of the effect */
     ContextEnum _context;
 
-    /** @brief Set of all previously defined parameters, defined on demand */
+    /** @brief Set of all previously fetched clips, defined on demand */
     std::map<std::string, Clip *> _fetchedClips;
+
+#ifdef OFX_EXTENSIONS_NUKE
+    /** @brief Set of all previously fetched cameras, defined on demand */
+    std::map<std::string, Camera *> _fetchedCameras;
+#endif
 
     /** @brief the overlay interacts that are open on this image effect */
     std::list<OverlayInteract *> _overlayInteracts;
@@ -1629,12 +1853,22 @@ namespace OFX {
 
     /** @brief Have we informed the host we support image tiling ? */
     bool getSupportsTiles(void) const;
+
+    /** @brief get plugin file path */
+    std::string getPluginFilePath(void) { return _effectProps.propGetString(kOfxPluginPropFilePath); }
     
 #ifdef OFX_EXTENSIONS_NUKE
     /** @brief indicate that a plugin or host can handle transform effects */
     void setCanTransform(bool v);
     
     bool getCanTransform() const;
+#endif
+
+#ifdef OFX_EXTENSIONS_NATRON
+    /** @brief indicate that a plugin or host can handle distortion function effects */
+    void setCanDistort(bool v);
+
+    bool getCanDistort() const;
 #endif
 
 #ifdef OFX_SUPPORTS_OPENGLRENDER
@@ -1665,11 +1899,11 @@ namespace OFX {
     Clip *fetchClip(const std::string &name);
 
 #ifdef OFX_EXTENSIONS_NUKE
-    /** @brief Fetch the named camera param from this instance
+    /** @brief Fetch the named camera from this instance
 
     The returned camera param \em must not be deleted by the client code. This is all managed by the ImageEffect itself.
     */
-    CameraParam* fetchCameraParam(const std::string& name) const;
+    Camera* fetchCamera(const std::string& name);
 #endif
 
     /** @brief does the host want us to abort rendering? */
@@ -1791,6 +2025,27 @@ namespace OFX {
     
     /** @brief Returns the number of views*/
     int getViewCount() const;
+#endif
+
+#ifdef OFX_EXTENSIONS_NATRON
+    /** @brief Implement if you effect can apply a 2D distortion.
+     In the generic form, the distortion function pointer must be set and a pointer to the data that should be passed back
+     to the function. A free function must also be provided to free the data once the host does not need them any more.
+     This let a chance to the host to concatenate distortion effects together filter only once.
+     @param distortionFunctionDataSizeHintInBytes This should indicate the size in bytes of the data held by distortionFunctionData.
+     Since distortionFunctionData may contain the result of heavy computations (such as a STMap), the host will attempt to cache these data.
+     However the void* does not indicate much to the host as to "how heavy" these datas are in its cache, so this parameter should hint
+     the host of the size of these datas in bytes.
+
+     If the effect distortion can be represented as a 3x3 matrix, then leave the function pointer to NULL and fill the transform matrix.
+     This will enable the host to better concatenate the distortion in such cases where 3x3 matrices can be multiplied together instead
+     of multiplying the transformation matrices for each pixel.
+     */
+    virtual bool getDistortion(const DistortionArguments &args, Clip * &transformClip, double transformMatrix[9],
+                               OfxDistortionFunctionV1* distortionFunction,
+                               void** distortionFunctionData,
+                               int* distortionFunctionDataSizeHintInBytes,
+                               OfxDistortionFreeDataFunctionV1* freeDataFunction);
 #endif
 
     /** @brief called when a custom param needs to be interpolated */

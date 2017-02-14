@@ -72,6 +72,10 @@ These strings are used to identify the type of the parameter when it is defined,
 #define kOfxParamTypeBoolean "OfxParamTypeBoolean"
 /** @brief String to identify a param as a Single valued, 'one-of-many' parameter */
 #define kOfxParamTypeChoice "OfxParamTypeChoice"
+#ifdef OFX_EXTENSIONS_RESOLVE
+/** @brief String to identify a param as a Single string-valued, 'one-of-many' parameter */
+#define kOfxParamTypeStrChoice "OfxParamTypeStrChoice"
+#endif
 /** @brief String to identify a param as a Red, Green, Blue and Alpha colour parameter */
 #define kOfxParamTypeRGBA "OfxParamTypeRGBA"
 /** @brief String to identify a param as a Red, Green and Blue colour parameter */
@@ -138,6 +142,16 @@ These are the list of properties used by the parameters suite.
     - Valid Values - 0 or 1
 */
 #define kOfxParamHostPropSupportsChoiceAnimation "OfxParamHostPropSupportsChoiceAnimation"
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+/** @brief Indicates if the host supports animation of string choice params
+
+    - Type - int X 1
+    - Property Set - host descriptor (read only)
+    - Valid Values - 0 or 1
+*/
+#define kOfxParamHostPropSupportsStrChoiceAnimation "OfxParamHostPropSupportsStrChoiceAnimation"
+#endif
 
 /** @brief Indicates if the host supports custom interacts for parameters
 
@@ -630,6 +644,22 @@ This data pointer is unique to each parameter instance, so two instances of the 
 This property contains the set of options that will be presented to a user from a choice parameter. See @ref ParametersChoice for more details. 
 */
 #define kOfxParamPropChoiceOption "OfxParamPropChoiceOption"
+
+#if defined(OFX_EXTENSIONS_RESOLVE) || defined(OFX_EXTENSIONS_NATRON)
+/** @brief Set a enumeration string in a choice parameter.
+
+    - Type - UTF8 C string X N
+    - Property Set - plugin parameter descriptor (read/write) and instance (read/write),
+    - Default - the property is empty with no options set.
+
+This property contains the set of enumeration strings corresponding to the options that will be presented to a user from a choice parameter. This property can be set on a Choice parameter (Natron only) or on a StrChoice parameter (Resolve only). See @ref ParametersChoice for more details. 
+
+On a Choice parameter (Natron), this property can be used to have a unique identifier for each option, so that the order of the options or the option labels (kOfxParamPropChoiceOption) may be changed without affecting the actual meaning of each option. The plugin should fetch the enum corresponding to the (integer) value of the parameter.
+
+An StrChoice parameter (Resolve) is a string parameter that can only take one value among the strings in the kOfxParamPropChoiceEnum properties. The user is presented with the options in the kOfxParamPropChoiceOption property, and the corresponding enum value is returned.
+*/
+#define kOfxParamPropChoiceEnum "OfxParamPropChoiceEnum"
+#endif
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 /** @brief Set an label option in a choice parameter.

@@ -89,6 +89,9 @@ namespace OFX {
     class RGBParamDescriptor;
     class BooleanParamDescriptor;
     class ChoiceParamDescriptor;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    class StrChoiceParamDescriptor;
+#endif
     class GroupParamDescriptor;
     class PageParamDescriptor;
     class PushButtonParamDescriptor;
@@ -109,6 +112,9 @@ namespace OFX {
     class StringParam;
     class BooleanParam;
     class ChoiceParam;
+#ifdef OFX_EXTENSIONS_RESOLVE
+    class StrChoiceParam;
+#endif
     class CustomParam;
     class GroupParam;
     class PageParam;
@@ -129,14 +135,14 @@ namespace OFX {
                         eRGBAParam,
                         eBooleanParam,
                         eChoiceParam,
+#ifdef OFX_EXTENSIONS_RESOLVE
+                        eStrChoiceParam,
+#endif
                         eCustomParam,
                         eGroupParam,
                         ePageParam,
                         ePushButtonParam,
                         eParametricParam,
-#ifdef OFX_EXTENSIONS_NUKE
-                        eCameraParam,
-#endif
                         };
 
     /** @brief Enumerates the different types of cache invalidation */
@@ -275,6 +281,9 @@ namespace OFX {
 
         /** @brief set the param hint */
         void setHint(const std::string &hint);
+
+        /** @brief set the param label and hint */
+        void setLabelAndHint(const std::string &label, const std::string &hint);
 
         /** @brief set the script name, default is the name it was created with */
         void setScriptName(const std::string &hint);
@@ -766,8 +775,12 @@ namespace OFX {
         /** @brief set the default value */
         void setDefault(int v);
 
-        /** @brief append an option, default is to have not there */
-        void appendOption(const std::string &v, const std::string& label = "");
+        /** @brief append an option
+         @param label The label of the option as it should appear on the GUI 
+         @param hint A hint for the option that could be displayed by the host in a tooltip
+         @param name The unique identifier for that option. If empty this is by default set to the label.
+         */
+        void appendOption(const std::string &label, const std::string& hint = "", const std::string& name = "");
     
         /** @brief how many options do we have */
         int getNOptions(void);
@@ -776,20 +789,53 @@ namespace OFX {
         void resetOptions(void);
 
         /** @brief clear all the options so as to add some new ones in */
-        void resetOptions(const std::vector<std::string>& newEntries, const std::vector<std::string>& newEntriesLabels = std::vector<std::string>());
+        void resetOptions(const std::vector<std::string>& newEntries,
+                          const std::vector<std::string>& newEntriesLabels = std::vector<std::string>(),
+                          const std::vector<std::string>& newEntriesIDS = std::vector<std::string>());
 
 #ifdef OFX_EXTENSIONS_NATRON
         /** @brief whether the menu should be cascading, and each option contains a slash-separated path to the item, defaults to false. */
         void setCascading(const bool v);
 
         /** @brief Indicate whether the host can add a new choice on its own (probably via a GUI specific to this parameter).
-         The plugin may then retrieve the option name whenever a choice value is out of its initial range.
+         The plugin may then retrieve the option enum whenever a choice value is out of its initial range.
 
          This property primarily targets image plane choices, where the host should be able to create a new plane and add it to the menu.
          */
         void setHostCanAddOptions(bool can);
 #endif
     };
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+    ////////////////////////////////////////////////////////////////////////////////
+    /** @brief Wraps up a string choice param */
+    class StrChoiceParamDescriptor : public ValueParamDescriptor
+    {
+    protected :
+        mDeclareProtectedAssignAndCCBase(StrChoiceParamDescriptor, ValueParamDescriptor);
+        StrChoiceParamDescriptor() { assert(false); }
+
+    protected :
+        /** @brief hidden constructor */
+        StrChoiceParamDescriptor(const std::string& p_Name, OfxPropertySetHandle p_Props);
+
+        // so it can make one
+        friend class ParamSetDescriptor;
+        
+    public :
+        /** @brief set the default value */
+        void setDefault(const std::string& p_DefaultValue);
+
+        /** @brief append an option */
+        void appendOption(const std::string& p_Enum, const std::string& p_Option);
+
+        /** @brief how many options do we have */
+        int getNOptions();
+
+        /** @brief clear all the options so as to add some new ones in */
+        void resetOptions();
+    };
+#endif
 
     ////////////////////////////////////////////////////////////////////////////////
     /** @brief Wraps up a group param, not much to it really */
@@ -1074,6 +1120,11 @@ namespace OFX {
 
         /** @brief Define a Choice param */
         ChoiceParamDescriptor *defineChoiceParam(const std::string &name);
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+        /** @brief Define a String Choice param */
+        StrChoiceParamDescriptor* defineStrChoiceParam(const std::string& p_Name);
+#endif
 
         /** @brief Define a group param */
         GroupParamDescriptor *defineGroupParam(const std::string &name);
@@ -1869,19 +1920,30 @@ namespace OFX {
         int getNOptions(void);
 
         /** @brief append an option, default is to have not there */
-        void appendOption(const std::string &v, const std::string& label = "");
+        void appendOption(const std::string &label, const std::string& hint = "", const std::string& name = "");
 
-        /** @brief set an option */
+        /** @brief set an option label */
         void setOption(int item, const std::string &str);
     
-        /** @brief get the option value */
+        /** @brief get the option label */
         void getOption(int ix, std::string &v);
+
+#ifdef OFX_EXTENSIONS_NATRON
+
+        /** @brief set an option enum */
+        void setEnum(int item, const std::string &name);
+
+        /** @brief get the option enum */
+        void getEnum(int ix, std::string &name);
+#endif
       
         /** @brief get all options at once. Optionally, the label of the options can be retrieved at the same time*/
-        void getOptions(std::vector<std::string>* options,std::vector<std::string>* optionsLabel = 0);
+        void getOptions(std::vector<std::string>* options,std::vector<std::string>* optionsHints = 0, std::vector<std::string>* optionsNames = 0);
 
         /** @brief clear all the options so as to add some new ones in */
-        void resetOptions(const std::vector<std::string>& newEntries = std::vector<std::string>(), const std::vector<std::string>& newEntriesLabels = std::vector<std::string>());
+        void resetOptions(const std::vector<std::string>& newEntries = std::vector<std::string>(),
+                          const std::vector<std::string>& newEntriesHint = std::vector<std::string>(),
+                          const std::vector<std::string>& newEntriesEnum = std::vector<std::string>());
 
 #ifdef OFX_EXTENSIONS_NATRON
         /** @brief whether the menu should be cascading, and each option contains a slash-separated path to the item, defaults to false. */
@@ -1912,6 +1974,40 @@ namespace OFX {
         /** @brief delete all keys and set to default value */
         void resetToDefault();
     };
+
+#ifdef OFX_EXTENSIONS_RESOLVE
+    ////////////////////////////////////////////////////////////////////////////////
+    /** @brief Wraps up a string choice param */
+    class StrChoiceParam : public StringParam
+    {
+    protected :
+        mDeclareProtectedAssignAndCCBase(StrChoiceParam, StringParam);
+        StrChoiceParam() { assert(false); }
+
+    protected :
+        /** @brief hidden constructor */
+        StrChoiceParam(const ParamSet* p_ParamSet, const std::string& p_Name, OfxParamHandle p_Handle);
+
+        // so it can make one
+        friend class ParamSet;
+        
+    public :
+        /** @brief how many options do we have */
+        int getNOptions();
+
+        /** @brief append an option */
+        void appendOption(const std::string& p_Enum, const std::string& p_Option);
+
+        /** @brief set an option */
+        void setOption(const std::string& p_Index, const std::string& p_Option);
+
+        /** @brief get the option value */
+        void getOption(const std::string& p_Index, std::string& p_Option);
+
+        /** @brief clear all the options so as to add some new ones in */
+        void resetOptions();
+    };
+#endif
 
     ////////////////////////////////////////////////////////////////////////////////
     /** @brief Wraps up a boolean param */
@@ -2166,9 +2262,6 @@ namespace OFX {
 
         /** @brief calls the raw OFX routine to define a param */
         void fetchRawParam(const std::string &name, ParamTypeEnum paramType, OfxParamHandle &handle) const;
-#ifdef OFX_EXTENSIONS_NUKE
-        void fetchRawCameraParam(OfxImageEffectHandle pluginHandle, const std::string& name, NukeOfxCameraHandle& handle) const;
-#endif
 
         /** @brief Fetch a param of the given name and type */
         template <class T> void
@@ -2195,15 +2288,6 @@ namespace OFX {
                 // add it to our map of described ones
                 _fetchedParams[name] = paramPtr;
             }
-        }
-
-    protected:
-        // the following function should be specialized for each param type T
-        // (see example below with T = CameraParam)
-        template<class T> void
-        fetchAttribute(OfxImageEffectHandle /*pluginHandle*/, const std::string& /*name*/, T * &/*paramPtr*/) const
-        {
-            assert(false);
         }
 
     protected :
@@ -2259,6 +2343,11 @@ namespace OFX {
         /** @brief Fetch a Choice param */
         ChoiceParam *fetchChoiceParam(const std::string &name) const;
 
+#ifdef OFX_EXTENSIONS_RESOLVE
+        /** @brief Fetch a String Choice param */
+        StrChoiceParam* fetchStrChoiceParam(const std::string& p_Name) const;
+#endif
+
         /** @brief Fetch a group param */
         GroupParam *fetchGroupParam(const std::string &name) const;
 
@@ -2274,37 +2363,6 @@ namespace OFX {
         /** @brief Fetch a parametric param */
         ParametricParam* fetchParametricParam(const std::string &name) const;
     };
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief Fetch a camera param */
-    template<> inline void
-    ParamSet::fetchAttribute<CameraParam>(OfxImageEffectHandle pluginHandle, const std::string& name, CameraParam * &paramPtr) const
-    {
-        typedef CameraParam T;
-        const ParamTypeEnum paramType = eCameraParam;
-        paramPtr = NULL;
-
-        // have we made it already in this param set and is it an int?
-        if(Param * param  = findPreviouslyFetchedParam(name))
-        {
-            if(param->getType() == paramType)
-            {
-                paramPtr = (T*) param;
-            }
-        }
-        else
-        {
-            // ok define one and add it in
-            NukeOfxCameraHandle paramHandle;
-            fetchRawCameraParam(pluginHandle, name, paramHandle);
-
-            // make out support descriptor class
-            paramPtr = new T(/*pluginHandle, */this, name, paramHandle);
-            
-            // add it to our map of described ones
-            _fetchedParams[name] = paramPtr;
-        }
-    }
-#endif
 };
 
 // undeclare the protected assign and CC macro

@@ -111,6 +111,11 @@ namespace OFX {
         bool canTransform() const;
 #endif
 
+#ifdef OFX_EXTENSIONS_NATRON
+        // can a distortion function be attached to images on this clip
+        bool canDistort() const;
+#endif
+
         /// get property set, const version
         const Property::Set &getProps() const;
 
@@ -206,17 +211,11 @@ namespace OFX {
         ///  kOfxBitDepthShort
         ///  kOfxBitDepthHalf
         ///  kOfxBitDepthFloat
-        const std::string &getPixelDepth() const
-        {
-          return _pixelDepth;
-        }
+        virtual const std::string &getPixelDepth() const;
 
         /// set the current pixel depth
         /// called by clip preferences action 
-        void setPixelDepth(const std::string &s)
-        {
-          _pixelDepth =  s;
-        }
+        void setPixelDepth(const std::string &s);
 
         /// Components that can be fetched from this clip -
         ///
@@ -361,9 +360,9 @@ namespace OFX {
         /// be 'appropriate' for the.
         /// If bounds is not null, fetch the indicated section of the canonical image plane.
         virtual ImageEffect::Image* getStereoscopicImage(OfxTime time, int view, const OfxRectD *optionalBounds) = 0;
-#endif
+#     endif
 
-#if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
+#     if defined(OFX_EXTENSIONS_VEGAS) || defined(OFX_EXTENSIONS_NUKE)
         /// override this to set the view to be returned by getImage()
         /// This is called by Instance::renderAction() for each clip, before calling
         /// kOfxImageEffectActionRender on the Instance.

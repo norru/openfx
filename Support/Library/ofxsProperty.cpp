@@ -297,7 +297,7 @@ namespace OFX {
     OFX::Exception::Suite)
   {
     assert(_propHandle != 0);
-    char *value = NULL;
+    const char *value = NULL;
     OfxStatus stat = gPropSuite->propGetString(_propHandle, property, idx, &value);
     OFX::Log::error(stat != kOfxStatOK, "Failed on getting string property %s[%d], host returned status %s;", 
       property, idx, mapStatusToString(stat));
@@ -354,7 +354,7 @@ namespace OFX {
     if (dimension <= 0 || !values) {
       return;
     }
-    std::vector<char*> rawValue(dimension, (char*)0);
+    std::vector<const char*> rawValue(dimension, (char*)0);
     OfxStatus stat = gPropSuite->propGetStringN(_propHandle, property, dimension, &rawValue.front());
     OFX::Log::error(stat != kOfxStatOK, "Failed on getting string property %s, host returned status %s;",
                       property, mapStatusToString(stat));
@@ -400,8 +400,24 @@ namespace OFX {
     if(throwOnFailure)
       throwPropertyException(stat, property);
 
-    if(_gPropLogging > 0) Log::print("Retrieved doublex%d property %s.", count, property);
-
+    if(_gPropLogging > 0) {
+      switch (count) {
+      case 1:
+        Log::print("Retrieved doublex1 property %s, was given %g.", property, values[0]);
+        break;
+      case 2:
+        Log::print("Retrieved doublex2 property %s, was given %g %g.", property, values[0], values[1]);
+        break;
+      case 3:
+        Log::print("Retrieved doublex3 property %s, was given %g %g %g.", property, values[0], values[1], values[2]);
+        break;
+      case 4:
+        Log::print("Retrieved doublex4 property %s, was given %g %g %g %g.", property, values[0], values[1], values[2], values[3]);
+        break;
+      default:
+        Log::print("Retrieved doublex%d property %s.", count, property);
+      }
+    }
   }
 
   void PropertySet::propGetIntN(const char* property, std::vector<int>* values, bool throwOnFailure) const throw(std::bad_alloc,
@@ -431,7 +447,24 @@ namespace OFX {
     if(throwOnFailure)
       throwPropertyException(stat, property);
 
-    if(_gPropLogging > 0) Log::print("Retrieved intx%d property %s.", count, property);
+    if(_gPropLogging > 0) {
+      switch (count) {
+      case 1:
+        Log::print("Retrieved intx1 property %s, was given %d.", property, values[0]);
+        break;
+      case 2:
+        Log::print("Retrieved intx2 property %s, was given %d %d.", property, values[0], values[1]);
+        break;
+      case 3:
+        Log::print("Retrieved intx3 property %s, was given %d %d %d.", property, values[0], values[1], values[2]);
+        break;
+      case 4:
+        Log::print("Retrieved intx4 property %s, was given %d %d %d %d.", property, values[0], values[1], values[2], values[3]);
+        break;
+      default:
+        Log::print("Retrieved intx%d property %s.", count, property);
+      }
+    }
 
   }
 
