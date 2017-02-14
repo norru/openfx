@@ -143,9 +143,6 @@ namespace OFX {
                         ePageParam,
                         ePushButtonParam,
                         eParametricParam,
-#ifdef OFX_EXTENSIONS_NUKE
-                        eCameraParam,
-#endif
                         };
 
     /** @brief Enumerates the different types of cache invalidation */
@@ -284,6 +281,9 @@ namespace OFX {
 
         /** @brief set the param hint */
         void setHint(const std::string &hint);
+
+        /** @brief set the param label and hint */
+        void setLabelAndHint(const std::string &label, const std::string &hint);
 
         /** @brief set the script name, default is the name it was created with */
         void setScriptName(const std::string &hint);
@@ -2262,9 +2262,6 @@ namespace OFX {
 
         /** @brief calls the raw OFX routine to define a param */
         void fetchRawParam(const std::string &name, ParamTypeEnum paramType, OfxParamHandle &handle) const;
-#ifdef OFX_EXTENSIONS_NUKE
-        void fetchRawCameraParam(OfxImageEffectHandle pluginHandle, const std::string& name, NukeOfxCameraHandle& handle) const;
-#endif
 
         /** @brief Fetch a param of the given name and type */
         template <class T> void
@@ -2291,15 +2288,6 @@ namespace OFX {
                 // add it to our map of described ones
                 _fetchedParams[name] = paramPtr;
             }
-        }
-
-    protected:
-        // the following function should be specialized for each param type T
-        // (see example below with T = CameraParam)
-        template<class T> void
-        fetchAttribute(OfxImageEffectHandle /*pluginHandle*/, const std::string& /*name*/, T * &/*paramPtr*/) const
-        {
-            assert(false);
         }
 
     protected :
@@ -2375,37 +2363,6 @@ namespace OFX {
         /** @brief Fetch a parametric param */
         ParametricParam* fetchParametricParam(const std::string &name) const;
     };
-#ifdef OFX_EXTENSIONS_NUKE
-    /** @brief Fetch a camera param */
-    template<> inline void
-    ParamSet::fetchAttribute<CameraParam>(OfxImageEffectHandle pluginHandle, const std::string& name, CameraParam * &paramPtr) const
-    {
-        typedef CameraParam T;
-        const ParamTypeEnum paramType = eCameraParam;
-        paramPtr = NULL;
-
-        // have we made it already in this param set and is it an int?
-        if(Param * param  = findPreviouslyFetchedParam(name))
-        {
-            if(param->getType() == paramType)
-            {
-                paramPtr = (T*) param;
-            }
-        }
-        else
-        {
-            // ok define one and add it in
-            NukeOfxCameraHandle paramHandle;
-            fetchRawCameraParam(pluginHandle, name, paramHandle);
-
-            // make out support descriptor class
-            paramPtr = new T(/*pluginHandle, */this, name, paramHandle);
-            
-            // add it to our map of described ones
-            _fetchedParams[name] = paramPtr;
-        }
-    }
-#endif
 };
 
 // undeclare the protected assign and CC macro
