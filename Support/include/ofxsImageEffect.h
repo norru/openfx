@@ -899,6 +899,10 @@ namespace OFX {
 
   /** @brief indicate that the plugin is deprecated */
   void setIsDeprecated(bool v);
+
+  /** @brief say whether all the planes listed on the output clip in the getClipComponents action should preferably be rendered
+    at once or not (e.g: optical flow plug-in that could produce bw/fw planes at once)*/
+  void setRenderAllPlanes(bool enabled);
 #endif
   };
 
@@ -1438,6 +1442,7 @@ namespace OFX {
     FieldEnum fieldToRender;
 #ifdef OFX_EXTENSIONS_NUKE
     int view;
+    std::string plane;
 #endif
   };
 

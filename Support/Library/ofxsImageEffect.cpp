@@ -1530,6 +1530,13 @@ namespace OFX {
   {
     _effectProps.propSetInt(kNatronOfxImageEffectPropDeprecated, (int)v, false);
   }
+
+  /** @brief say whether all the planes listed on the output clip in the getClipComponents action should preferably be rendered
+   at once or not (e.g: optical flow plug-in that could produce bw/fw planes at once)*/
+  void ImageEffectDescriptor::setRenderAllPlanes(bool enabled)
+  {
+    _effectProps.propSetInt(kOfxImageEffectPropRenderAllPlanes, (int)enabled, false);
+  }
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -4040,9 +4047,9 @@ namespace OFX {
       if (args.renderView == 0) {
         args.renderView = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
       }
-      int numPlanes = inArgs.propGetDimension(kFnOfxImageEffectPropComponentsPresent, false);
+      int numPlanes = inArgs.propGetDimension(kOfxImageEffectPropRenderPlanes, false);
       for (int i = 0; i < numPlanes; ++i) {
-        args.planes.push_back(inArgs.propGetString(kFnOfxImageEffectPropComponentsPresent, i, false));
+        args.planes.push_back(inArgs.propGetString(kOfxImageEffectPropRenderPlanes, i, false));
       }
 #endif
 
@@ -4189,6 +4196,7 @@ namespace OFX {
 
 #ifdef OFX_EXTENSIONS_NUKE
       args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
+      args.plane = inArgs.propGetString(kOfxImageEffectPropIdentityPlane, 0, false);
 #endif
         
       std::string str = inArgs.propGetString(kOfxImageEffectPropFieldToRender);

@@ -832,7 +832,8 @@ namespace OFX {
                                            const OfxRectI  &renderRoI,
                                            OfxPointD   renderScale,
 #ifdef OFX_EXTENSIONS_NUKE
-                                           int view,
+                                           int& view,
+                                           std::string& plane,
 #endif
                                            std::string &clip);
 
