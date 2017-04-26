@@ -1526,6 +1526,7 @@ namespace OFX {
       OfxStatus Instance::getTransformAction(OfxTime time,
                                              const std::string& field,
                                              OfxPointD renderScale,
+                                             bool draftRender,
                                              int view,
                                              std::string& clip,
                                              double transform[9])
@@ -1538,6 +1539,7 @@ namespace OFX {
           { kOfxPropTime, Property::eDouble, 1, true, "0" },
           { kOfxImageEffectPropFieldToRender, Property::eString, 1, true, "" }, 
           { kOfxImageEffectPropRenderScale, Property::eDouble, 2, true, "0" },
+          { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" }, // OFX 1.4
           { kFnOfxImageEffectPropView, Property::eInt, 1, true, "0" },
           Property::propSpecEnd
         };
@@ -1554,6 +1556,7 @@ namespace OFX {
         inArgs.setStringProperty(kOfxImageEffectPropFieldToRender,field);
         inArgs.setDoubleProperty(kOfxPropTime,time);
         inArgs.setDoublePropertyN(kOfxImageEffectPropRenderScale, &renderScale.x, 2);
+        inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
         inArgs.setIntProperty(kFnOfxImageEffectPropView, view);
         for(std::map<std::string, ClipInstance*>::iterator it=_clips.begin();
             it!=_clips.end();
@@ -1585,6 +1588,7 @@ namespace OFX {
       OfxStatus Instance::getDistortionAction(OfxTime time,
                                               const std::string& field,
                                               OfxPointD renderScale,
+                                              bool draftRender,
                                               int view,
                                               std::string& clip,
                                               double transform[9],
@@ -1601,6 +1605,7 @@ namespace OFX {
           { kOfxPropTime, Property::eDouble, 1, true, "0" },
           { kOfxImageEffectPropFieldToRender, Property::eString, 1, true, "" },
           { kOfxImageEffectPropRenderScale, Property::eDouble, 2, true, "0" },
+          { kOfxImageEffectPropRenderQualityDraft, Property::eInt, 1, true, "0" }, // OFX 1.4
           { kFnOfxImageEffectPropView, Property::eInt, 1, true, "0" },
           Property::propSpecEnd
         };
@@ -1621,6 +1626,7 @@ namespace OFX {
         inArgs.setStringProperty(kOfxImageEffectPropFieldToRender,field);
         inArgs.setDoubleProperty(kOfxPropTime,time);
         inArgs.setDoublePropertyN(kOfxImageEffectPropRenderScale, &renderScale.x, 2);
+        inArgs.setIntProperty(kOfxImageEffectPropRenderQualityDraft,draftRender);
         inArgs.setIntProperty(kFnOfxImageEffectPropView, view);
         for(std::map<std::string, ClipInstance*>::iterator it=_clips.begin();
             it!=_clips.end();

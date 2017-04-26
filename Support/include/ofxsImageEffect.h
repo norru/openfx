@@ -1542,6 +1542,7 @@ namespace OFX {
     double    time;
     OfxPointD renderScale;
     FieldEnum fieldToRender;
+    bool      renderQualityDraft;
     int       renderView;
   };
 #endif
@@ -1552,6 +1553,7 @@ namespace OFX {
     double    time;
     OfxPointD renderScale;
     FieldEnum fieldToRender;
+    bool      renderQualityDraft;
     int       renderView;
   };
 #endif
