@@ -2804,6 +2804,10 @@ namespace OFX {
       return true;
     if(str == kOfxImageComponentAlpha)
       return true;
+#ifdef OFX_EXTENSIONS_NATRON
+    if(str == kNatronOfxImageComponentXY)
+      return true;
+#endif
     return false;
   }
 
