@@ -2230,7 +2230,7 @@ namespace OFX {
     return new Image(imageHandle);
   }
     
-  void Clip::getComponentsPresent(std::vector<std::string>* components) const
+  void Clip::getPlanesPresent(std::vector<std::string>* components) const
   {
     _clipProps.propGetStringN(kFnOfxImageEffectPropComponentsPresent, components, false);
   }
@@ -2528,6 +2528,11 @@ namespace OFX {
   {
     return _effectProps.propGetInt(kOfxImageEffectPropCanDistort, false) != 0;
   }
+
+  void ImageEffect::getExtraneousPlanesCreated(std::vector<std::string>* planes) const
+  {
+      _effectProps.propGetStringN(kNatronOfxExtraCreatedPlanes, planes, false);
+  }
 #endif
 
 #ifdef OFX_EXTENSIONS_NUKE
@@ -2802,10 +2807,6 @@ namespace OFX {
       return true;
     if(str == kOfxImageComponentRGB)
       return true;
-#  ifdef OFX_EXTENSIONS_NATRON
-    if(str == kNatronOfxImageComponentXY)
-      return true;
-#  endif
     if(str == kOfxImageComponentAlpha)
       return true;
 #ifdef OFX_EXTENSIONS_NATRON
@@ -3007,12 +3008,6 @@ namespace OFX {
           if(isChromaticComponent(rawComp)) {
             //Update deepest bitdepth and most components only if the infos are relevant, i.e: only if the clip is connected
             hasSetComps = true;
-            bool mostIsAlpha = (mostComponents == kOfxImageComponentAlpha);
-            bool rawIsAlpha = (rawComp == kOfxImageComponentAlpha);
-            if (mostIsAlpha != rawIsAlpha) {
-              // one is alpha, the other is anything else than just alpha: the union is RGBA
-              mostComponents = kOfxImageComponentRGBA;
-            }
             mostComponents  = findMostChromaticComponents(mostComponents, rawComp);
           }
         }
@@ -3169,8 +3164,9 @@ namespace OFX {
 #endif
 
 #ifdef OFX_EXTENSIONS_NUKE
-  void ImageEffect::getClipComponents(const ClipComponentsArguments& /*args*/, ClipComponentsSetter& /*clipComponents*/)
+  OfxStatus ImageEffect::getClipComponents(const ClipComponentsArguments& /*args*/, ClipComponentsSetter& /*clipComponents*/)
   {
+      return kOfxStatReplyDefault;
         // pass
   }
     
@@ -4682,7 +4678,7 @@ namespace OFX {
     }
       
     static
-    bool
+    OfxStatus
     getClipComponentsAction(OfxImageEffectHandle handle, OFX::PropertySet inArgs, OFX::PropertySet &outArgs, const char* plugname, unsigned int majorVersion, unsigned int minorVersion)
     {
         ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
@@ -4696,11 +4692,11 @@ namespace OFX {
         key.minorVersion = minorVersion;
         ImageEffectDescriptor* desc = gEffectDescriptors[key][effectInstance->getContext()];
         ClipComponentsSetter setter(outArgs,desc->getClipPlanesPropNames());
-        effectInstance->getClipComponents(args,setter);
-        if (setter.setOutProperties()) {
-            return true;
+        OfxStatus stat = effectInstance->getClipComponents(args,setter);
+        if (!setter.setOutProperties()) {
+            return kOfxStatReplyDefault;
         }
-        return false;
+        return stat;
     }
       
     /** @brief Action called in place of a render to recover a transform matrix from an effect. */
@@ -5160,9 +5156,7 @@ namespace OFX {
           // call the clip components function, return OK if it does something
           // the spec is not clear as to whether it is allowed to do nothing but
           // this action should always be implemented for multi-planes effects.
-          if (getClipComponentsAction(handle, inArgs, outArgs, plugname, it->second._plug->pluginVersionMajor, it->second._plug->pluginVersionMinor)) {
-              stat = kOfxStatOK;
-          }
+          stat = getClipComponentsAction(handle, inArgs, outArgs, plugname, it->second._plug->pluginVersionMajor, it->second._plug->pluginVersionMinor);
         }
         else if(action == kFnOfxImageEffectActionGetFrameViewsNeeded) {
           checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, false, false);
