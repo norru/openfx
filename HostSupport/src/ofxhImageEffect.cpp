@@ -3483,7 +3483,9 @@ namespace OFX {
         Memory::Instance *memoryInstance = reinterpret_cast<Memory::Instance*>(memoryHandle);
 
         if(memoryInstance && memoryInstance->verifyMagic()) {
-          memoryInstance->freeMem();
+          if (memoryInstance->freeMem()) {
+            delete memoryInstance;
+          }
           return kOfxStatOK;
         }
         else 
