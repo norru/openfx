@@ -3424,6 +3424,7 @@ namespace OFX {
 
         if(memoryInstance && memoryInstance->verifyMagic()) {
           memoryInstance->freeMem();
+          delete memoryInstance;
           return kOfxStatOK;
         }
         else 
