@@ -301,8 +301,8 @@ namespace OFX {
   const char* mapPixelComponentEnumToStr(PixelComponentEnum pixelComponent) throw(std::invalid_argument);
 
 #if defined(OFX_EXTENSIONS_NATRON)
-  /** @brief extract layer name (first element) and channel names (other elements) from the kOfxImageEffectPropComponents property value, @see getPixelComponentsProperty() */
-  std::vector<std::string> mapPixelComponentCustomToLayerChannels(const std::string& comp);
+  /** @brief extract a custom Natron plane defined in the multi-plane extension from the kOfxImageEffectPropComponents property value, @see getPixelComponentsProperty() */
+ bool extractCustomPlane(const std::string& comp, std::string* layerName, std::string* layerLabel, std::string* channelsLabel, std::vector<std::string>* channels);
 #endif
 
   class PluginFactory
@@ -905,6 +905,10 @@ namespace OFX {
 
   /** @brief indicate that the plugin is deprecated */
   void setIsDeprecated(bool v);
+
+  /** @brief say whether all the planes listed on the output clip in the getClipComponents action should preferably be rendered
+    at once or not (e.g: optical flow plug-in that could produce bw/fw planes at once)*/
+  void setRenderAllPlanes(bool enabled);
 #endif
   };
 
@@ -1246,8 +1250,8 @@ namespace OFX {
     */
     Image* fetchImagePlane(double t, const char* plane, const OfxRectD& bounds);
 
-    /** @brief Property set indicating the components present on something*/
-    void getComponentsPresent(std::vector<std::string>* components) const;
+    /** @brief Indicates the planes present on a clip.*/
+    void getPlanesPresent(std::vector<std::string>* components) const;
       
 #endif
       
@@ -1444,6 +1448,7 @@ namespace OFX {
     FieldEnum fieldToRender;
 #ifdef OFX_EXTENSIONS_NUKE
     int view;
+    std::string plane;
 #endif
   };
 
@@ -1602,7 +1607,7 @@ namespace OFX {
       bool _doneSomething;
       typedef std::map<std::string, std::string> StringStringMap;
       const StringStringMap& _clipPlanesPropNames;
-      std::map<std::string,std::vector<std::string> > _clipComponents;
+      std::map<std::string,std::vector<std::string> > _clipPlanes;
       
       const std::string& extractValueForName(const StringStringMap& m, const std::string& name);
       
@@ -1613,17 +1618,17 @@ namespace OFX {
       : _outArgs(props)
       , _doneSomething(false)
       , _clipPlanesPropNames(clipPlanesPropNames)
-      , _clipComponents()
+      , _clipPlanes()
       {
           
       }
       
       bool setOutProperties();
-      
-      void addClipComponents(Clip& clip, PixelComponentEnum comps);
-      
-      //Pass the raw-string, used by the ofxNatron.h extension
-      void addClipComponents(Clip& clip, const std::string& comps);
+
+      /**
+       * @brief Pass a plane name defined in SupportExt/ofxsMultiPlane.h
+       **/
+      void addClipPlane(Clip& clip, const std::string& comps);
       
       //Pass NULL into clip for non pass-through
       void setPassThroughClip(const Clip* clip,double time,int view);
@@ -1877,6 +1882,9 @@ namespace OFX {
     void setCanDistort(bool v);
 
     bool getCanDistort() const;
+
+    /** @brief Returns a list of planes that were created by the user on the host side*/
+    void getExtraneousPlanesCreated(std::vector<std::string>* planes) const;
 #endif
 
 #ifdef OFX_SUPPORTS_OPENGLRENDER
@@ -1954,9 +1962,14 @@ namespace OFX {
     function should return true and set the \em identityClip pointer to point to the clip that is the identity
     and \em identityTime to be the time at which to access the clip for the identity operation.
     */
-    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime);
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime
+#ifdef OFX_EXTENSIONS_NUKE
+    , int& view
+    , std::string& plane
+#endif
+    );
 
-    /** @brief The get RoD action. 
+    /** @brief The get RoD action.
 
     If the effect wants change the rod from the default value (which is the union of RoD's of all input clips)
     it should set the \em rod argument and return true.
@@ -2033,7 +2046,7 @@ namespace OFX {
 
 #ifdef OFX_EXTENSIONS_NUKE
     /** @brief get the needed input components and produced output components*/
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents);
+    virtual OfxStatus getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents);
       
     /** @brief get the frame/views needed for input clips*/
     virtual void getFrameViewsNeeded(const FrameViewsNeededArguments& args, FrameViewsNeededSetter& frameViews);

@@ -586,35 +586,109 @@ namespace OFX {
 #endif
 
 #if defined(OFX_EXTENSIONS_NATRON)
-  /** @brief extract layer name (first element) and channel names (other elements) from the kOfxImageEffectPropComponents property value, @see getPixelComponentsProperty() */
-  std::vector<std::string> mapPixelComponentCustomToLayerChannels(const std::string& comp)
+  /** @brief extract a custom Natron plane defined in the multi-plane extension from the kOfxImageEffectPropComponents property value, @see getPixelComponentsProperty() */
+  bool extractCustomPlane(const std::string& comp, std::string* layerName, std::string* layerLabel, std::string* channelsLabel, std::vector<std::string>* channels)
   {
-    std::vector<std::string> retval;
 
-    const std::size_t foundPlaneLen = std::strlen(kNatronOfxImageComponentsPlane);
-    std::size_t foundPlane = comp.find(kNatronOfxImageComponentsPlane);
+    // Find the plane unique identifier
+    const std::size_t foundPlaneLen = std::strlen(kNatronOfxImageComponentsPlaneName);
+    std::size_t foundPlane = comp.find(kNatronOfxImageComponentsPlaneName);
     if (foundPlane == std::string::npos) {
-      return retval;
+      return false;
     }
 
-    std::size_t foundChannel = comp.find(kNatronOfxImageComponentsPlaneChannel, foundPlane + foundPlaneLen);
-    if (foundChannel == std::string::npos) {
-      return retval;
+    const std::size_t planeNameStartIdx = foundPlane + foundPlaneLen;
+
+    // Find the optionnal plane label
+    // If planeLabelStartIdx = 0, there's no plane label.
+    std::size_t planeLabelStartIdx = 0;
+
+
+    const std::size_t foundPlaneLabelLen = std::strlen(kNatronOfxImageComponentsPlaneLabel);
+    std::size_t foundPlaneLabel = comp.find(kNatronOfxImageComponentsPlaneLabel, planeNameStartIdx);
+    if (foundPlaneLabel != std::string::npos) {
+        planeLabelStartIdx = foundPlaneLabel + foundPlaneLabelLen;
     }
 
-    retval.push_back(comp.substr(foundPlane + foundPlaneLen, foundChannel - (foundPlane + foundPlaneLen)));
+
+
+    // Find the optionnal channels label
+    // If channelsLabelStartIdx = 0, there's no channels label.
+    std::size_t channelsLabelStartIdx = 0;
+
+
+    const std::size_t foundChannelsLabelLen = std::strlen(kNatronOfxImageComponentsPlaneChannelsLabel);
+
+    // If there was a plane label before, pick from there otherwise pick from the name
+    std::size_t findChannelsLabelStart = planeLabelStartIdx > 0 ? planeLabelStartIdx : planeNameStartIdx;
+    std::size_t foundChannelsLabel = comp.find(kNatronOfxImageComponentsPlaneChannelsLabel, findChannelsLabelStart);
+    if (foundChannelsLabel != std::string::npos) {
+        channelsLabelStartIdx = foundChannelsLabel + foundChannelsLabelLen;
+    }
+
+
+
+    // Find the first channel
+    // If there was a channels label before, find from there, otherwise if there was a plane label before
+    // find from there, otherwise find from the name.
+    std::size_t findChannelStart = 0;
+    if (channelsLabelStartIdx > 0) {
+        findChannelStart = channelsLabelStartIdx;
+    } else if (planeLabelStartIdx > 0) {
+        findChannelStart = planeLabelStartIdx;
+    } else {
+        findChannelStart = planeNameStartIdx;
+    }
 
     const std::size_t foundChannelLen = std::strlen(kNatronOfxImageComponentsPlaneChannel);
+    std::size_t foundChannel = comp.find(kNatronOfxImageComponentsPlaneChannel, findChannelStart);
+    if (foundChannel == std::string::npos) {
+      // There needs to be at least one channel.
+      return false;
+    }
+
+    // Extract channels label
+    if (channelsLabelStartIdx > 0) {
+        *channelsLabel = comp.substr(channelsLabelStartIdx, foundChannel - channelsLabelStartIdx);
+    }
+
+    // Extract plane label
+    if (planeLabelStartIdx > 0) {
+        std::size_t endIndex = (foundChannelsLabel != std::string::npos) ? foundChannelsLabel : foundChannel;
+        *layerLabel = comp.substr(planeLabelStartIdx, endIndex - planeLabelStartIdx);
+    }
+
+    // Extract plane name
+    {
+        std::size_t endIndex;
+        if (foundPlaneLabel != std::string::npos) {
+            // There's a plane label
+            endIndex = foundPlaneLabel;
+        } else if (foundChannelsLabel != std::string::npos) {
+            // There's no plane label but a channels label
+            endIndex = foundChannelsLabel;
+        } else {
+            // No plane label and no channels label
+            endIndex = foundChannel;
+        }
+        *layerName = comp.substr(planeNameStartIdx, endIndex - planeNameStartIdx);
+    }
+
     while (foundChannel != std::string::npos) {
-      std::size_t nextChannel = comp.find(kNatronOfxImageComponentsPlaneChannel, foundChannel + foundChannelLen);
-      std::string chan = comp.substr(foundChannel + foundChannelLen, nextChannel - (foundChannel + foundChannelLen));
-      retval.push_back(chan);
+        if (channels->size() >= 4) {
+            // A plane must have between 1 and 4 channels.
+            return false;
+        }
+      findChannelStart = foundChannel + foundChannelLen;
+      std::size_t nextChannel = comp.find(kNatronOfxImageComponentsPlaneChannel, findChannelStart);
+      std::string chan = comp.substr(findChannelStart, nextChannel - findChannelStart);
+      channels->push_back(chan);
       foundChannel = nextChannel;
     }
 
-    return retval;
-  }
-#endif
+    return true;
+  } // extractCustomPlane
+#endif // OFX_EXTENSIONS_NATRON
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1465,6 +1539,13 @@ namespace OFX {
   {
     _effectProps.propSetInt(kNatronOfxImageEffectPropDeprecated, (int)v, false);
   }
+
+  /** @brief say whether all the planes listed on the output clip in the getClipComponents action should preferably be rendered
+   at once or not (e.g: optical flow plug-in that could produce bw/fw planes at once)*/
+  void ImageEffectDescriptor::setRenderAllPlanes(bool enabled)
+  {
+    _effectProps.propSetInt(kOfxImageEffectPropRenderAllPlanes, (int)enabled, false);
+  }
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1505,14 +1586,17 @@ namespace OFX {
         _pixelComponentCount = 2;
         break;
 #endif
-      case ePixelComponentCustom:
+        case ePixelComponentCustom: {
 #ifdef OFX_EXTENSIONS_NATRON
-        // first element in the vector is the layer name (if any)
-        _pixelComponentCount = std::max((int)mapPixelComponentCustomToLayerChannels(str).size() - 1, 0);
+
+        std::string planeName, planeLabel, channelsLabel;
+        std::vector<std::string> channels;
+        extractCustomPlane(str, &planeName, &planeLabel, &channelsLabel, &channels);
+        _pixelComponentCount = channels.size();
 #else
         _pixelComponentCount = 0;
 #endif
-        break;
+        }   break;
       default:
         _pixelComponentCount = 0;
         break;
@@ -1859,13 +1943,16 @@ namespace OFX {
       case ePixelComponentXY:
         return 2;
 #endif
-      case ePixelComponentCustom:
+        case ePixelComponentCustom: {
 #ifdef OFX_EXTENSIONS_NATRON
-        // first element in the vector is the layer name (if any)
-        return std::max((int)mapPixelComponentCustomToLayerChannels(str).size() - 1, 0);
+        std::string planeName, planeLabel, channelsLabel;
+        std::vector<std::string> channels;
+        extractCustomPlane(str, &planeName, &planeLabel, &channelsLabel, &channels);
+        return channels.size();
 #else
         return 0;
 #endif
+        }
       default:
         return 0;
     }
@@ -2182,7 +2269,7 @@ namespace OFX {
     return new Image(imageHandle);
   }
     
-  void Clip::getComponentsPresent(std::vector<std::string>* components) const
+  void Clip::getPlanesPresent(std::vector<std::string>* components) const
   {
     _clipProps.propGetStringN(kFnOfxImageEffectPropComponentsPresent, components, false);
   }
@@ -2480,6 +2567,11 @@ namespace OFX {
   {
     return _effectProps.propGetInt(kOfxImageEffectPropCanDistort, false) != 0;
   }
+
+  void ImageEffect::getExtraneousPlanesCreated(std::vector<std::string>* planes) const
+  {
+      _effectProps.propGetStringN(kNatronOfxExtraCreatedPlanes, planes, false);
+  }
 #endif
 
 #ifdef OFX_EXTENSIONS_NUKE
@@ -2690,7 +2782,12 @@ namespace OFX {
 
   /** @brief client is identity function, returns the clip and time for the identity function 
   */
-  bool ImageEffect::isIdentity(const IsIdentityArguments &/*args*/, Clip * &/*identityClip*/, double &/*identityTime*/)
+  bool ImageEffect::isIdentity(const IsIdentityArguments &/*args*/, Clip * &/*identityClip*/, double &/*identityTime*/
+#ifdef OFX_EXTENSIONS_NUKE
+                               , int& /*view*/
+                               , std::string& /*plane*/
+#endif
+  )
   {
     return false; // by default, we are not an identity operation
   }
@@ -2749,12 +2846,12 @@ namespace OFX {
       return true;
     if(str == kOfxImageComponentRGB)
       return true;
-#  ifdef OFX_EXTENSIONS_NATRON
-    if(str == kNatronOfxImageComponentXY)
-      return true;
-#  endif
     if(str == kOfxImageComponentAlpha)
       return true;
+#ifdef OFX_EXTENSIONS_NATRON
+    if(str == kNatronOfxImageComponentXY)
+      return true;
+#endif
     return false;
   }
 
@@ -3112,8 +3209,9 @@ namespace OFX {
 #endif
 
 #ifdef OFX_EXTENSIONS_NUKE
-  void ImageEffect::getClipComponents(const ClipComponentsArguments& /*args*/, ClipComponentsSetter& /*clipComponents*/)
+  OfxStatus ImageEffect::getClipComponents(const ClipComponentsArguments& /*args*/, ClipComponentsSetter& /*clipComponents*/)
   {
+      return kOfxStatReplyDefault;
         // pass
   }
     
@@ -3296,7 +3394,7 @@ namespace OFX {
   
   bool ClipComponentsSetter::setOutProperties()
   {
-      for (std::map<std::string,std::vector<std::string> >::iterator it = _clipComponents.begin(); it!=_clipComponents.end(); ++it) {
+      for (std::map<std::string,std::vector<std::string> >::iterator it = _clipPlanes.begin(); it!=_clipPlanes.end(); ++it) {
           const std::string& propName = extractValueForName(_clipPlanesPropNames, it->first);
           for (std::size_t i = 0; i < it->second.size(); ++i) {
               _outArgs.propSetString(propName.c_str(), it->second[i], (int)i, true);
@@ -3304,49 +3402,11 @@ namespace OFX {
       }
       return _doneSomething;
   }
- 
-  void ClipComponentsSetter::addClipComponents(Clip& clip, PixelComponentEnum comps)
-  {
-      _doneSomething = true;
-      std::string compName;
-      switch(comps)
-      {
-        case ePixelComponentNone :
-            compName = kOfxImageComponentNone;
-            break;
-        case ePixelComponentRGBA :
-            compName = kOfxImageComponentRGBA;
-            break;
-        case ePixelComponentRGB :
-            compName = kOfxImageComponentRGB;
-            break;
-        case ePixelComponentAlpha :
-            compName = kOfxImageComponentAlpha;
-            break;
-#ifdef OFX_EXTENSIONS_NUKE
-        case ePixelComponentMotionVectors :
-            compName = kFnOfxImageComponentMotionVectors;
-            break;
-        case ePixelComponentStereoDisparity :
-            compName = kFnOfxImageComponentStereoDisparity;
-            break;
-#endif
-#ifdef OFX_EXTENSIONS_NATRON
-        case ePixelComponentXY:
-            compName = kNatronOfxImageComponentXY;
-            break;
-#endif
-        case ePixelComponentCustom :
-            break;
-      }
-      _clipComponents[clip.name()].push_back(compName);
-      
-  }
     
-  void ClipComponentsSetter::addClipComponents(Clip& clip, const std::string& comps)
+  void ClipComponentsSetter::addClipPlane(Clip& clip, const std::string& comps)
   {
      _doneSomething = true;
-     _clipComponents[clip.name()].push_back(comps);
+     _clipPlanes[clip.name()].push_back(comps);
   }
     
   void ClipComponentsSetter::setPassThroughClip(const Clip* clip, double time, int view)
@@ -4050,9 +4110,9 @@ namespace OFX {
       if (args.renderView == 0) {
         args.renderView = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
       }
-      int numPlanes = inArgs.propGetDimension(kFnOfxImageEffectPropComponentsPresent, false);
+      int numPlanes = inArgs.propGetDimension(kOfxImageEffectPropRenderPlanes, false);
       for (int i = 0; i < numPlanes; ++i) {
-        args.planes.push_back(inArgs.propGetString(kFnOfxImageEffectPropComponentsPresent, i, false));
+        args.planes.push_back(inArgs.propGetString(kOfxImageEffectPropRenderPlanes, i, false));
       }
 #endif
 
@@ -4199,6 +4259,7 @@ namespace OFX {
 
 #ifdef OFX_EXTENSIONS_NUKE
       args.view = inArgs.propGetInt(kFnOfxImageEffectPropView, 0, false);
+      args.plane = inArgs.propGetString(kOfxImageEffectPropIdentityPlane, 0, false);
 #endif
         
       std::string str = inArgs.propGetString(kOfxImageEffectPropFieldToRender);
@@ -4227,11 +4288,23 @@ namespace OFX {
       // and call the plugin client isIdentity code
       Clip *identityClip = 0;
       double identityTime = args.time;
-      bool v = effectInstance->isIdentity(args, identityClip, identityTime);
+#ifdef OFX_EXTENSIONS_NUKE
+      int identityView = args.view;
+      std::string identityPlane = args.plane;
+#endif
+      bool v = effectInstance->isIdentity(args, identityClip, identityTime
+#ifdef OFX_EXTENSIONS_NUKE
+                                          , identityView, identityPlane
+#endif
+                                          );
 
       if(v && identityClip) {
         outArgs.propSetString(kOfxPropName, identityClip->name());
-        outArgs.propSetDouble(kOfxPropTime, identityTime);                
+        outArgs.propSetDouble(kOfxPropTime, identityTime);
+#ifdef OFX_EXTENSIONS_NUKE
+        outArgs.propSetInt(kFnOfxImageEffectPropView, identityView, 0, false);
+        outArgs.propSetString(kOfxImageEffectPropIdentityPlane, identityPlane, 0, false);
+#endif
         return true;
       }
       return false;
@@ -4650,7 +4723,7 @@ namespace OFX {
     }
       
     static
-    bool
+    OfxStatus
     getClipComponentsAction(OfxImageEffectHandle handle, OFX::PropertySet inArgs, OFX::PropertySet &outArgs, const char* plugname, unsigned int majorVersion, unsigned int minorVersion)
     {
         ImageEffect *effectInstance = retrieveImageEffectPointer(handle);
@@ -4664,11 +4737,11 @@ namespace OFX {
         key.minorVersion = minorVersion;
         ImageEffectDescriptor* desc = gEffectDescriptors[key][effectInstance->getContext()];
         ClipComponentsSetter setter(outArgs,desc->getClipPlanesPropNames());
-        effectInstance->getClipComponents(args,setter);
-        if (setter.setOutProperties()) {
-            return true;
+        OfxStatus stat = effectInstance->getClipComponents(args,setter);
+        if (!setter.setOutProperties()) {
+            return kOfxStatReplyDefault;
         }
-        return false;
+        return stat;
     }
       
     /** @brief Action called in place of a render to recover a transform matrix from an effect. */
@@ -5128,9 +5201,7 @@ namespace OFX {
           // call the clip components function, return OK if it does something
           // the spec is not clear as to whether it is allowed to do nothing but
           // this action should always be implemented for multi-planes effects.
-          if (getClipComponentsAction(handle, inArgs, outArgs, plugname, it->second._plug->pluginVersionMajor, it->second._plug->pluginVersionMinor)) {
-              stat = kOfxStatOK;
-          }
+          stat = getClipComponentsAction(handle, inArgs, outArgs, plugname, it->second._plug->pluginVersionMajor, it->second._plug->pluginVersionMinor);
         }
         else if(action == kFnOfxImageEffectActionGetFrameViewsNeeded) {
           checkMainHandles(actionRaw, handleRaw, inArgsRaw, outArgsRaw, false, false, false);

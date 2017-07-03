@@ -90,7 +90,7 @@ The Foundry multi-plane suite:
 
  - The getClipComponents action is unused.
  
- - If the clip components are set to kFnOfxImageComponentMotionVectors or kFnOfxImageComponentStereoDisparity is is expected that the following render actions are called on both paired planes (the plug-in will attempt to fetch both from the render action).
+ - If the clip components are set to kFnOfxImageComponentMotionVectors or kFnOfxImageComponentStereoDisparity it is expected that the following render actions are called on both paired planes (the plug-in will attempt to fetch both from the render action).
  
 Natron modifications:
 ---------------------
@@ -101,21 +101,37 @@ Natron modifications:
  The multi-plane extension defined in fnOfxExtensions.h by The Foundry has nothing set in this regard and we had to come-up
  with one.
  
- A custom Layer (or plane) is defined as follows:
+ A custom Layer (a.k.a plane) is defined as follows:
  
- - A unique name, e.g: "RenderLayer"
+ - A unique name, e.g: "fr.myRenderer.RenderLayer"
+ - An optional label, e.g: "RenderLayer". If empty, this will be set to the name.
  - A set of 1 to 4 channels represented by strings, e.g: ["R","G","B","A"]
+ - An optional string to better illustrate the channels type, e.g: "MotionVectors" would better represent "XY". If empty, this will be set to the concatenation of all channel strings.
  
  Typically it would be presented like this to the user in a choice parameter:
  
  RenderLayer.RGBA
+ DisparityLeft.Disparity
  
  Internally instead of passing this string and parsing it, we encode the layer as such:
  
- kNatronOfxImageComponentsPlane + layerName + kNatronOfxImageComponentsPlaneChannel + channel1Name + kNatronOfxImageComponentsPlaneChannel + channel2Name + kNatronOfxImageComponentsPlaneChannel + channel3Name
+ kNatronOfxImageComponentsPlaneName + planeName +
+ <optional> kNatronOfxImageComponentsPlaneLabel + planeLabel +
+ <optional> kNatronOfxImageComponentsPlaneChannelsLabel + channelsLabel +
+ kNatronOfxImageComponentsPlaneChannel + channel1Name +
+ kNatronOfxImageComponentsPlaneChannel + channel2Name +
+ kNatronOfxImageComponentsPlaneChannel + channel3Name
+
+ Examples:
+
+ kNatronOfxImageComponentsPlaneName + "fr.unique.id.position" + kNatronOfxImageComponentsPlaneLabel + "Position" + kNatronOfxImageComponentsPlaneChannel + "X" + kNatronOfxImageComponentsPlaneChannel + "Y" + kNatronOfxImageComponentsPlaneChannel + "Z"
+
+
+ kNatronOfxImageComponentsPlaneName + "DisparityLeft" + kNatronOfxImageComponentsPlaneChannelsLabel + "Disparity" + kNatronOfxImageComponentsPlaneChannel + "X" + kNatronOfxImageComponentsPlaneChannel + "Y"
+
  
- e.g: kNatronOfxImageComponentsPlane + "Position" + kNatronOfxImageComponentsPlaneChannel + "X" + kNatronOfxImageComponentsPlaneChannel + "Y" + kNatronOfxImageComponentsPlaneChannel + "Z"
- 
+
+
 
  Natron custom layers can be passed wherever layers are used (clipGetImage,render action) or components are used: getClipComponents. They may not be used
  in getClipPreferences.
@@ -136,24 +152,40 @@ Natron modifications:
 Notes:
 ------
  
- - Layers are what is passed to the render action and clipGetImage function whereas components are what is used for getClipComponents and getClipPreferences
- 
- - In the getClipComponents action, the plug-in passes OpenFX components.
+ - Layers are what is passed to the render actionn getClipComponents action and clipGetImage function whereas components are what is used for getClipPreferences
+
+ - The kFnOfxImageEffectPropComponentsPresent property on clip instances must return a list of planes available on that clip (not components).
  
  */
 
 
 /** @brief string property to indicate the presence of custom components on a clip in or out.
   The string should be formed as such:
-  kNatronOfxImageComponentsPlane + planeName + kNatronOfxImageComponentsPlaneChannel + channel1Name + kNatronOfxImageComponentsPlaneChannel + channel2Name + kNatronOfxImageComponentsPlaneChannel + channel3Name
+
+  kNatronOfxImageComponentsPlaneName + 
+  planeName +
+  <optional> kNatronOfxImageComponentsPlaneLabel + planeLabel +
+  <optional> kNatronOfxImageComponentsPlaneChannelsLabel + channelsLabel +
+  kNatronOfxImageComponentsPlaneChannel + channel1Name +
+  kNatronOfxImageComponentsPlaneChannel + channel2Name +
+  kNatronOfxImageComponentsPlaneChannel + channel3Name
  
-  e.g: kNatronOfxImageComponentsPlane + "Position" + kNatronOfxImageComponentsPlaneChannel + "X" + kNatronOfxImageComponentsPlaneChannel + "Y" + kNatronOfxImageComponentsPlaneChannel + "Z"
+  Examples:
+  
+  kNatronOfxImageComponentsPlaneName + "fr.unique.id.position" + kNatronOfxImageComponentsPlaneLabel + "Position" + kNatronOfxImageComponentsPlaneChannel + "X" + kNatronOfxImageComponentsPlaneChannel + "Y" + kNatronOfxImageComponentsPlaneChannel + "Z"
+    
+  kNatronOfxImageComponentsPlaneName + "DisparityLeft" + kNatronOfxImageComponentsPlaneChannelsLabel + "Disparity" + kNatronOfxImageComponentsPlaneChannel + "X" + kNatronOfxImageComponentsPlaneChannel + "Y"
  
   This indicates to the host in which plane should the given components appear and how many pixel channels it contains.
   It can be used at any place where kOfxImageComponentAlpha, kOfxImageComponentRGB, kOfxImageComponentRGBA, kOfxImageComponentNone (etc...) is
   given.
  */
-#define kNatronOfxImageComponentsPlane  "NatronOfxImageComponentsPlane_"
+#define kNatronOfxImageComponentsPlaneName  "NatronOfxImageComponentsPlaneName_"
+
+#define kNatronOfxImageComponentsPlaneLabel  "_PlaneLabel_"
+
+#define kNatronOfxImageComponentsPlaneChannelsLabel  "_ChannelsLabel_"
+
 #define kNatronOfxImageComponentsPlaneChannel   "_Channel_"
 
 
@@ -173,7 +205,9 @@ This is a property on parameters of type ::kOfxParamTypeChoice, and tells the ch
 */
 #define kNatronOfxParamPropChoiceCascading "NatronOfxParamPropChoiceCascading"
 
-/** @brief int x1 property on a choice parameter descriptor (read/write) and choice parameter instance (read-only) to indicate whether
+/** @brief
+ DEPRECATED: No longer used as of Natron 3
+ int x1 property on a choice parameter descriptor (read/write) and choice parameter instance (read-only) to indicate whether
  the host can add a new choice on its own (probably via a GUI specific to this parameter).
  The plugin may then retrieve the option enum whenever a choice value is out of its initial range.
 
@@ -187,11 +221,21 @@ This is a property on parameters of type ::kOfxParamTypeChoice, and tells the ch
  */
 #define kNatronOfxParamPropChoiceHostCanAddOptions "NatronOfxParamPropChoiceHostCanAddOptions"
 
-/** @brief The standard parameter for setting output channels of a plugin (used by Shuffle).
- 
- This parameter may have the property kNatronOfxParamPropChoiceHostCanAddOptions set.
+/** @brief 
+ DEPRECATED: No longer used as of Natron 3
+ The standard parameter for setting output channels of a plugin (used by Shuffle)
  */
 #define kNatronOfxParamOutputChannels "outputChannels"
+
+/** @brief String xN property, similar to kFnOfxImageEffectPropComponentsPresent, except that this indicates for an effect
+ a set of extraneous planes that were created by the user though some sort of interface which should be made available
+ in output of this effect.
+
+ Property Set - image effect instance (read only)
+ Valid values - A list of one or multiple planes as described in the multi-plane definition 
+ Default value - None
+ */
+#define kNatronOfxExtraCreatedPlanes "NatronOfxExtraCreatedPlanes"
 
 /** @brief Indicates if the host may add a channel selector, and which components should be selected by default.
 
