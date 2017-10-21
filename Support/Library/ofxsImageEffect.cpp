@@ -202,7 +202,7 @@ namespace OFX {
   //Put it all into a map, so we know when to delete what!
   struct OfxPlugInfo
   {
-    OfxPlugInfo():_factory(0), _plug(0){}
+    OfxPlugInfo(): _factory(NULL), _plug(NULL) {}
     OfxPlugInfo(OFX::PluginFactory* f, OfxPlugin* p):_factory(f), _plug(p){}
     OFX::PluginFactory* _factory;
     OfxPlugin* _plug;
@@ -2426,7 +2426,7 @@ namespace OFX {
   /** @brief ctor */
   ImageEffect::ImageEffect(OfxImageEffectHandle handle)
     : _effectHandle(handle)
-    , _effectProps(0)
+    , _effectProps(NULL)
     , _context(eContextNone)
     , _progressStartSuccess(false)
   {
@@ -3356,7 +3356,7 @@ namespace OFX {
   SonyVegasUpliftArguments::SonyVegasUpliftArguments(PropertySet args)
     : guidUplift()
     , keyframeCount(0)
-    , commonData(0)
+    , commonData(NULL)
     , commonDataSize(0)
   {
       _argProps = args;
