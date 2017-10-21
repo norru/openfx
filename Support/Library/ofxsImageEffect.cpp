@@ -3630,7 +3630,7 @@ namespace OFX {
 
   /** @brief ctor */
   ImageMemory::ImageMemory(size_t nBytes, ImageEffect *associatedEffect)
-    : _handle(0)
+    : _handle(NULL)
   {
     OfxImageEffectHandle effectHandle = 0;
     if(associatedEffect != 0) {
