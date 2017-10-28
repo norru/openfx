@@ -34,6 +34,11 @@ using namespace OFX;
 
 Binary::Binary(const std::string &binaryPath): _binaryPath(binaryPath), _invalid(false), _dlHandle(NULL), _users(0)
 {
+  _invalid = !getFileModTimeAndSize(binaryPath, _time, _size);
+}
+
+bool Binary::getFileModTimeAndSize(const std::string &binaryPath, time_t& modificationTime, off_t& fileSize)
+{
   int statRet;
 #ifdef WINDOWS
   struct _stat64 sb;
@@ -44,16 +49,15 @@ Binary::Binary(const std::string &binaryPath): _binaryPath(binaryPath), _invalid
   statRet = stat(binaryPath.c_str(), &sb);
 #endif
   if (statRet != 0) {
-    _invalid = true;
-    _time = 0;
-    _size = 0;
-  } 
-  else {
-    _time = sb.st_mtime;
-    _size = sb.st_size;
+    modificationTime = 0;
+    fileSize = 0;
+    return false;
+  } else {
+    modificationTime = sb.st_mtime;
+    fileSize = sb.st_size;
+    return true;
   }
 }
-
 
 // actually open the binary.
 void Binary::load() 
