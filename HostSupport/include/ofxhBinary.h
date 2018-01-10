@@ -77,6 +77,9 @@ namespace OFX
 
     ~Binary() { unload(); }
 
+    // calls stat, returns true if successfull, false otherwise
+    static bool getFileModTimeAndSize(const std::string &binaryPath, time_t& modificationTime, off_t& fileSize);
+
     bool isLoaded() const { return _dlHandle != 0; }
 
     /// is this binary invalid? (did the a stat() or load() on the file fail,

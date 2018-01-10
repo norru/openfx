@@ -53,6 +53,9 @@ namespace OFX {
 
   namespace Host {
 
+    typedef int(*OfxGetNumberOfPluginsFunc)(void);
+    typedef OfxPlugin*(*OfxGetPluginFunc)(int);
+    
     class Host;
 
     // forward delcarations
@@ -230,30 +233,37 @@ namespace OFX {
       friend class PluginHandle;
 
     protected :
-      Binary _binary;                 ///< our binary object, abstracted layer ontop of OS calls, defined in ofxhBinary.h
+      Binary* _binary;                 ///< our binary object, abstracted layer ontop of OS calls, defined in ofxhBinary.h, may not be valid if function pointers below are already set
+      OfxGetNumberOfPluginsFunc _getNumberOfPlugins;
+      OfxGetPluginFunc _getPluginFunc;
       std::string _filePath;          ///< full path to the file
       std::string _bundlePath;        ///< path to the .bundle directory
       std::vector<Plugin *> _plugins; ///< my plugins
       time_t _fileModificationTime;   ///< used as a time stamp to check modification times, used for caching
       off_t _fileSize;                ///< file size last time we check, used for caching
       bool _binaryChanged;            ///< whether the timestamp/filesize in this cache is different from that in the actual binary
-      
+      bool _binaryInvalid;            ///< whether we could open and stat the binary or not
+
     public :
 
       /// create one from the cache.  this will invoke the Binary() constructor which
       /// will stat() the file.
       explicit PluginBinary(const std::string &file, const std::string &bundlePath, time_t mtime, off_t size)
-        : _binary(file)
+        : _binary(new Binary(file))
+        , _getNumberOfPlugins(0)
+        , _getPluginFunc(0)
         , _filePath(file)
         , _bundlePath(bundlePath)
         , _fileModificationTime(mtime)
         , _fileSize(size)
         , _binaryChanged(false)
+        , _binaryInvalid(false)
       {
         if (isInvalid()) {
+          _binaryInvalid = true;
           return;
         }
-        if (_fileModificationTime != _binary.getTime() || _fileSize != _binary.getSize()) {
+        if (_fileModificationTime != _binary->getTime() || _fileSize != _binary->getSize()) {
           _binaryChanged = true;
         }
       }
@@ -262,17 +272,59 @@ namespace OFX {
       /// constructor which will open a library file, call things inside it, and then 
       /// create Plugin objects as appropriate for the plugins exported therefrom
       explicit PluginBinary(const std::string &file, const std::string &bundlePath, PluginCache *cache)
-        : _binary(file)
+        : _binary(new Binary(file))
+        , _getNumberOfPlugins(0)
+        , _getPluginFunc(0)
         , _filePath(file)
         , _bundlePath(bundlePath)
         , _binaryChanged(false)
+        , _binaryInvalid(false)
       {
+        if (_binary->isInvalid()) {
+          _binaryInvalid = true;
+        }
         loadPluginInfo(cache);
       }
+      
+       /// create the plug-in object from function pointers directly, this is useful for statically linked plug-ins.
+      explicit PluginBinary(const std::string& hostAppBinFilePath,
+                            OfxGetNumberOfPluginsFunc getNumberOfPlugins,
+                            OfxGetPluginFunc getPlugins,
+                            PluginCache *cache,
+                            std::string* cachedHostAppBinFilePath = 0,
+                            time_t* cachedFileModificationTime = 0,
+                            off_t* cachedFileSize = 0)
+      : _binary(0)
+      , _getNumberOfPlugins(getNumberOfPlugins)
+      , _getPluginFunc(getPlugins)
+      , _filePath(hostAppBinFilePath)
+      , _bundlePath(hostAppBinFilePath)
+      , _plugins()
+      , _fileModificationTime()
+      , _fileSize()
+      , _binaryChanged(true)
+      , _binaryInvalid(false)
+      {
+        _binaryInvalid = !Binary::getFileModTimeAndSize(hostAppBinFilePath, _fileModificationTime, _fileSize);
+        if (cachedHostAppBinFilePath && cachedFileModificationTime && cachedFileSize) {
+          if (_filePath == *cachedHostAppBinFilePath && _fileModificationTime == *cachedFileModificationTime && _fileSize == *cachedFileSize) {
+            _binaryChanged = false;
+          }
+        }
+        if (_binaryChanged) {
+          loadPluginInfo(cache);
+        }
+      }
+
     
       /// dtor
       virtual ~PluginBinary();
 
+      
+      bool isStaticallyLinkedPlugin() const
+      {
+        return _binary == 0;
+      }
 
       time_t getFileModificationTime() const {
       	return _fileModificationTime;
@@ -295,11 +347,11 @@ namespace OFX {
       }
 
       bool isLoaded() const {
-        return _binary.isLoaded();
+        return _binary ? _binary->isLoaded() : true;
       }
         
       bool isInvalid() const {
-        return _binary.isInvalid();
+        return _binaryInvalid;
       }
 
       void addPlugin(Plugin *pe) {
@@ -366,8 +418,14 @@ namespace OFX {
       std::set<std::string>     _nonrecursePath; ///< list of directories to look in (non-recursively)
       std::list<std::string>    _pluginDirs;  ///< list of directories we found
       std::list<PluginBinary *> _binaries; ///< all the binaries we know about, we own these
+#ifdef OFX_USE_STATIC_PLUGINS
+      PluginBinary* _staticBinary; /// < the statically linked binary
+#endif
       std::list<Plugin *>       _plugins;  ///< all the plugins inside the binaries, we don't own these, populated from _binaries
       std::set<std::string>     _knownBinFiles;
+#ifdef OFX_USE_STATIC_PLUGINS
+      std::string               _hostAppBinFilePath; ///< file path of the host application binary, used to timestamp statically linked plug-ins
+#endif
 
       PluginBinary *_xmlCurrentBinary;
       Plugin *_xmlCurrentPlugin;
@@ -431,6 +489,11 @@ namespace OFX {
           _nonrecursePath.insert(f);
         }
       }
+#ifdef OFX_USE_STATIC_PLUGINS
+      void setHostApplicationBinPath(const std::string& f) {
+        _hostAppBinFilePath = f;
+      }
+#endif
 
       /// specify which subdirectory of /usr/OFX or equivilant
       /// (as well as 'Plugins') to look in for plugins.

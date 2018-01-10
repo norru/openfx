@@ -104,6 +104,7 @@ static const char *getArchStr()
 #include "shlobj.h"
 #endif
 
+
 bool OFX::Host::PluginCache::_useStdOFXPluginsLocation = true;
 OFX::Host::PluginCache* OFX::Host::PluginCache::gPluginCachePtr = 0;
 
@@ -118,31 +119,38 @@ void PluginBinary::loadPluginInfo(PluginCache *cache) {
   if (isInvalid()) {
     return;
   }
-  _fileModificationTime = _binary.getTime();
-  _fileSize = _binary.getSize();
-  _binaryChanged = false;
-  
-  // Take a reference to load the binary only once per session. It will
-  // eventually be unloaded in the destructor (see below).
-  // This avoid lots of useless calls to dlopen()/dlclose().
-  if (!_binary.isLoaded()) {
-    _binary.ref();
+
+  if (_binary) {
+    _fileModificationTime = _binary->getTime();
+    _fileSize = _binary->getSize();
+    
+    // Take a reference to load the binary only once per session. It will
+    // eventually be unloaded in the destructor (see below).
+    // This avoid lots of useless calls to dlopen()/dlclose().
+    if (!_binary->isLoaded()) {
+      _binary->ref();
+    }
   }
 
-  int (*getNo)(void) = (int(*)()) _binary.findSymbol("OfxGetNumberOfPlugins");
-  OfxPlugin* (*getPlug)(int) = (OfxPlugin*(*)(int)) _binary.findSymbol("OfxGetPlugin");
   
-  if (getNo == 0 || getPlug == 0) {
-    
-    _binary.setInvalid(true);
+  if (_binary) {
+    _getNumberOfPlugins = (OfxGetNumberOfPluginsFunc) _binary->findSymbol("OfxGetNumberOfPlugins");
+    _getPluginFunc = (OfxGetPluginFunc) _binary->findSymbol("OfxGetPlugin");
+  }
+  
+  
+  if (_getNumberOfPlugins == 0 || _getPluginFunc == 0) {
+    if (_binary) {
+      _binary->setInvalid(true);
+    }
     
   } else {
-    int pluginCount = (*getNo)();
-    
+    int pluginCount = (*_getNumberOfPlugins)();
+    _plugins.clear();
     _plugins.reserve(pluginCount);
     
     for (int i=0;i<pluginCount;i++) {
-      OfxPlugin *plug = (*getPlug)(i);
+      OfxPlugin *plug = (*_getPluginFunc)(i);
       
       APICache::PluginAPICacheI *api = cache->findApiHandler(plug->pluginApi, plug->apiVersion);
       assert(api);
@@ -162,18 +170,28 @@ PluginBinary::~PluginBinary() {
   }
   // release the last reference to the binary, which should unload it
   // if this reference was taken by loadPluginInfo().
-  if (_binary.isLoaded()) {
-    _binary.unref();
+  if (_binary) {
+    if (_binary->isLoaded()) {
+      _binary->unref();
+    }
+    assert(!_binary->isLoaded());
   }
-  assert(!_binary.isLoaded());
 }
 
 PluginHandle::PluginHandle(Plugin *p, OFX::Host::Host *host)
 {
   _b = p->getBinary();
-  _b->_binary.ref();
+  if (_b->_binary) {
+    _b->_binary->ref();
+  }
   _op = 0;
-  OfxPlugin* (*getPlug)(int) = (OfxPlugin*(*)(int)) _b->_binary.findSymbol("OfxGetPlugin");
+  OfxPlugin* (*getPlug)(int) = 0;
+  if (_b->_getPluginFunc) {
+    getPlug = _b->_getPluginFunc;
+  }
+  if (!getPlug && _b->_binary) {
+    getPlug = (OfxPlugin*(*)(int)) _b->_binary->findSymbol("OfxGetPlugin");
+  }
   if (getPlug) {
     _op = getPlug(p->getIndex());
     if (_op) {         
@@ -183,7 +201,9 @@ PluginHandle::PluginHandle(Plugin *p, OFX::Host::Host *host)
 }
 
 PluginHandle::~PluginHandle() {
-  _b->_binary.unref();
+  if (_b->_binary) {
+    _b->_binary->unref();
+  }
 }
 
 
@@ -248,7 +268,7 @@ PluginCache::~PluginCache()
   _binaries.clear();
 }
 
-PluginCache::PluginCache() : _hostSpec(NULL), _xmlCurrentBinary(NULL), _xmlCurrentPlugin(NULL) {
+PluginCache::PluginCache() : _hostSpec(NULL), _staticBinary(NULL), _xmlCurrentBinary(NULL), _xmlCurrentPlugin(NULL) {
   
   _cacheVersion = "";
   _ignoreCache = false;
@@ -464,12 +484,35 @@ void PluginCache::scanPluginFiles()
        paths++) {
     scanDirectory(foundBinFiles, *paths, _nonrecursePath.find(*paths) == _nonrecursePath.end());
   }
+
+#ifdef OFX_USE_STATIC_PLUGINS
+  // Now add all static plug-ins
+
+  // If already loaded from the cache, the static binary must point to the same host binary file
+  assert(!_staticBinary || _staticBinary->getFilePath() == _hostAppBinFilePath);
+  if (!_staticBinary) {
+    _staticBinary = new PluginBinary(_hostAppBinFilePath, &OfxGetNumberOfPlugins,&OfxGetPlugin,this, 0, 0);
+    if (_staticBinary->isInvalid()) {
+      std::cerr << "WARNING: ignoring statically linked plug-ins because host application binary file path (" << _hostAppBinFilePath << ") is wrongly set" << std::endl;
+      delete _staticBinary;
+      _staticBinary = 0;
+    } else {
+      _dirty = true;
+      for (int j=0;j<_staticBinary->getNPlugins();j++) {
+         Plugin *plug = &_staticBinary->getPlugin(j);
+         const APICache::PluginAPICacheI &api = plug->getApiHandler();
+         api.loadFromPlugin(plug);
+      }
+      _binaries.push_back(_staticBinary);
+    }
+  }
+#endif
   
   std::list<PluginBinary *>::iterator i=_binaries.begin();
   while (i!=_binaries.end()) {
     PluginBinary *pb = *i;
     
-    if (foundBinFiles.find(pb->getFilePath()) == foundBinFiles.end()) {
+    if (!pb->isStaticallyLinkedPlugin() && foundBinFiles.find(pb->getFilePath()) == foundBinFiles.end()) {
       
       // the binary was in the cache, but was not on the path
       
@@ -483,7 +526,10 @@ void PluginCache::scanPluginFiles()
       
       // the binary was in the cache, but the binary has changed and thus we need to reload
       if (binChanged) {
-        pb->loadPluginInfo(this);
+        // The static PluginBinary already had loadPluginInfo called anyway at this point
+        if (!pb->isStaticallyLinkedPlugin()) {
+          pb->loadPluginInfo(this);
+        }
         _dirty = true;
       }
       
@@ -565,20 +611,41 @@ void PluginCache::elementBeginCallback(void */*userData*/, const XML_Char *name,
   }
   
   if (ename == "binary") {
-    const char *binAtts[] = {"path", "bundle_path", "mtime", "size", NULL};
+    const char *binAtts[] = {"static_bin", "path", "bundle_path", "mtime", "size", NULL};
     
     if (!mapHasAll(attmap, binAtts)) {
       // no path: bad XML
     }
-    
+
+#ifdef OFX_USE_STATIC_PLUGINS
+    bool isStaticLinkedCachedBinary = OFX::Host::Property::stringToInt(attmap["static_bin"]);
+#endif
+
     std::string fname = attmap["path"];
     std::string bname = attmap["bundle_path"];
     time_t mtime = OFX::Host::Property::stringToInt(attmap["mtime"]);
-    size_t size = OFX::Host::Property::stringToInt(attmap["size"]);
-    
-    _xmlCurrentBinary = new PluginBinary(fname, bname, mtime, size);
+    off_t size = OFX::Host::Property::stringToInt(attmap["size"]);
+
+    PluginBinary* pb;
+#ifdef OFX_USE_STATIC_PLUGINS
+    if (isStaticLinkedCachedBinary) {
+      // only 1 static binary allowed!
+      if (_staticBinary) {
+        _ignoreCache = true;
+        return;
+      }
+      // We need to provide the 2 function pointers for the static binary
+      pb = new PluginBinary(_hostAppBinFilePath, &OfxGetNumberOfPlugins,&OfxGetPlugin, this, &fname, &mtime, &size);
+      _staticBinary = pb;
+    } else
+#endif
+    {
+      pb = new PluginBinary(fname, bname, mtime, size);
+    }
+    _xmlCurrentBinary = pb;
     _binaries.push_back(_xmlCurrentBinary);
     _knownBinFiles.insert(fname);
+    
     return;
   }
   
@@ -709,15 +776,22 @@ void PluginCache::writePluginCache(std::ostream &os) const {
   os << "<cache version=\"" << _cacheVersion << "\">\n";
   for (std::list<PluginBinary *>::const_iterator i=_binaries.begin();i!=_binaries.end();i++) {
     PluginBinary *b = *i;
+    
+    std::vector<Plugin*> plugins(b->getNPlugins());
+    for (std::size_t j = 0; j < plugins.size(); ++j) {
+      plugins[j] = &b->getPlugin((int)j);
+    }
+    
     os << "<bundle>\n";
-    os << "  <binary " 
-       << XML::attribute("bundle_path", b->getBundlePath()) 
+    os << "  <binary "
+       << XML::attribute("static_bin", int(b->isStaticallyLinkedPlugin()))
+       << XML::attribute("bundle_path", b->getBundlePath())
        << XML::attribute("path", b->getFilePath())
        << XML::attribute("mtime", int(b->getFileModificationTime()))
        << XML::attribute("size", int(b->getFileSize())) << "/>\n";
     
-    for (int j=0;j<b->getNPlugins();j++) {
-      Plugin *p = &b->getPlugin(j);
+    for (int j=0;j<(int)plugins.size();j++) {
+      Plugin *p = plugins[j];
       
       
       os << "  <plugin " 
