@@ -1793,8 +1793,8 @@ namespace OFX {
 
   void *Image::getPixelAddressNearest(int x, int y)
   {
-    x = std::max(_bounds.x1, std::min(x, _bounds.x2 - 1));
-    y = std::max(_bounds.y1, std::min(y, _bounds.y2 - 1));
+    x = (std::max)(_bounds.x1, (std::min)(x, _bounds.x2 - 1));
+    y = (std::max)(_bounds.y1, (std::min)(y, _bounds.y2 - 1));
 
     char *pix = ((char *) _pixelData) + (size_t)(y - _bounds.y1) * _rowBytes;
     pix += (x - _bounds.x1) * _pixelBytes;
@@ -1803,8 +1803,8 @@ namespace OFX {
 
   const void *Image::getPixelAddressNearest(int x, int y) const
   {
-    x = std::max(_bounds.x1, std::min(x, _bounds.x2 - 1));
-    y = std::max(_bounds.y1, std::min(y, _bounds.y2 - 1));
+    x = (std::max)(_bounds.x1, (std::min)(x, _bounds.x2 - 1));
+    y = (std::max)(_bounds.y1, (std::min)(y, _bounds.y2 - 1));
 
     const char *pix = ((const char *) _pixelData) + (size_t)(y - _bounds.y1) * _rowBytes;
     pix += (x - _bounds.x1) * _pixelBytes;
