@@ -40,18 +40,24 @@ ifeq ($(CONFIG), relwithdebinfo)
   DEBUGNAME = relwithdebinfo
 endif
 
-BITS := 32
-ifeq ($(shell getconf LONG_BIT),64)
+ifdef X64_TARGET
   BITS := 64
+  OS := $(X64_TARGET)
+else
+  BITS := 32
+  ifeq ($(shell getconf LONG_BIT),64)
+    BITS := 64
+  endif
+  OS := $(shell uname -s)
 endif
-OS := $(shell uname -s)
+
 DEBUGFLAG ?= -g
 DEBUGNAME ?= debug
 ifeq ($(DEBUGFLAG),-O3)
   DEBUGNAME = release
 endif
 
-ifeq ($(OS),$(filter $(OS),MINGW64_NT-6.1 MINGW32_NT-6.1 MINGW64_NT-6.2 MINGW32_NT-6.2 MINGW64_NT-6.3 MINGW32_NT-6.3 MINGW64_NT-10.0 MINGW32_NT-10.0))
+ifeq ($(OS),$(filter $(OS),MINGW64_NT-6.1 MINGW32_NT-6.1 MINGW64_NT-6.2 MINGW32_NT-6.2 MINGW64_NT-6.3 MINGW32_NT-6.3 MINGW64_NT-10.0 MINGW32_NT-10.0 MINGW64_LINUX))
   PLUGINPATH=C:\\Program Files\\Common Files\\OFX\\Plugins
 endif
 ifeq ($(OS),Linux)
@@ -119,6 +125,21 @@ uninstall:
     endif
     # mingw64 runtime >=3 or mingw32 runtime>=3.15 is required to get a proper snprintf implementation,
     # which is triggered by the following CPPFLAGS.
+    CPPFLAGS = -U__STRICT_ANSI__ -D__USE_MINGW_ANSI_STDIO=1
+    LINKFLAGS := $(LINKFLAGS) $(BITSFLAG)
+  endif
+  ifeq ($(OS), MINGW64_LINUX)
+    CXX = x86_64-w64-mingw32-g++
+    LINKFLAGS = -shared -fvisibility=hidden -Xlinker --version-script=$(PATHTOROOT)/include/linuxSymbols -L/usr/x86_64-w64-mingw32/lib -L/usr/local/x86_64-w64-mingw32/lib/ -lopengl32
+    ARCH = Win32
+    BITSFLAG = -m32 -fPIC
+    ifeq ($(BITS), 64)
+      BITSFLAG = -m64 -fPIC
+      ARCH = Win64
+    endif
+    # mingw64 runtime >=3 or mingw32 runtime>=3.15 is required to get a proper snprintf implementation,
+    # which is triggered by the following CPPFLAGS.
+    CXXFLAGS = -I/usr/share/mingw-w64/include
     CPPFLAGS = -U__STRICT_ANSI__ -D__USE_MINGW_ANSI_STDIO=1
     LINKFLAGS := $(LINKFLAGS) $(BITSFLAG)
   endif
